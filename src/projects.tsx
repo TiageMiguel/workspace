@@ -1,6 +1,7 @@
 import { ActionPanel, Action, List, Icon, Color } from "@raycast/api";
 import AddFolderForm from "./components/AddFolderForm";
 import Settings from "./components/Settings";
+import Walkthrough from "./components/Walkthrough";
 import path from "path";
 
 import { useWorkspace } from "./hooks/useWorkspace";
@@ -15,6 +16,8 @@ export default function Command() {
     isLoading,
     loadData,
     getSubdirectories,
+    walkthroughCompleted,
+    setWalkthroughCompleted,
   } = useWorkspace();
 
   const allProjects: { folder: string; projects: Project[] }[] = parentFolders.map((folder) => ({
@@ -26,6 +29,17 @@ export default function Command() {
   }));
 
   const globalEditorName = defaultEditor?.name || "Select App to open";
+
+  if (!isLoading && !walkthroughCompleted) {
+    return (
+      <Walkthrough
+        onComplete={() => setWalkthroughCompleted(true)}
+        folders={parentFolders}
+        defaultApp={defaultEditor}
+        loadData={loadData}
+      />
+    );
+  }
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search projects...">

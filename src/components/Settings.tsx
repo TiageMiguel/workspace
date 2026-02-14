@@ -74,6 +74,20 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
     await showToast({ style: Toast.Style.Success, title: "Folder app reset" });
   }
 
+  async function moveFolder(index: number, direction: "up" | "down") {
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= folders.length) return;
+
+    const newFolders = [...folders];
+    const [moved] = newFolders.splice(index, 1);
+    newFolders.splice(newIndex, 0, moved);
+
+    await saveStoredFolders(newFolders);
+    setFolders(newFolders);
+    await onFoldersChanged();
+    await showToast({ style: Toast.Style.Success, title: "Order updated" });
+  }
+
   return (
     <List navigationTitle="Settings">
       <List.Section title="General">
@@ -95,7 +109,7 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
       </List.Section>
 
       <List.Section title="Managed Folders">
-        {folders.map((folder) => {
+        {folders.map((folder, index) => {
           const folderApp = folderApps[folder];
           return (
             <List.Item
@@ -116,26 +130,48 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
               }
               actions={
                 <ActionPanel>
-                  <Action.Push
-                    title="Set Folder App"
-                    icon={Icon.Pencil}
-                    target={<SelectEditor onSelect={(app) => setFolderApp(folder, app)} />}
-                  />
-                  {folderApp && (
-                    <Action
-                      title="Reset to Default App"
-                      icon={Icon.ArrowCounterClockwise}
-                      onAction={() => resetFolderApp(folder)}
+                  <ActionPanel.Section>
+                    <Action.Push
+                      title="Set Folder App"
+                      icon={Icon.Pencil}
+                      target={<SelectEditor onSelect={(app) => setFolderApp(folder, app)} />}
                     />
-                  )}
-                  <Action
-                    title="Remove Folder"
-                    icon={Icon.Trash}
-                    style={Action.Style.Destructive}
-                    onAction={() => removeFolder(folder)}
-                  />
-                  <Action.ShowInFinder path={folder} />
-                  <Action.CopyToClipboard content={folder} />
+                    {index > 0 && (
+                      <Action
+                        title="Move up"
+                        icon={Icon.ChevronUp}
+                        shortcut={{ modifiers: ["opt"], key: "arrowUp" }}
+                        onAction={() => moveFolder(index, "up")}
+                      />
+                    )}
+                    {index < folders.length - 1 && (
+                      <Action
+                        title="Move Down"
+                        icon={Icon.ChevronDown}
+                        shortcut={{ modifiers: ["opt"], key: "arrowDown" }}
+                        onAction={() => moveFolder(index, "down")}
+                      />
+                    )}
+                  </ActionPanel.Section>
+                  <ActionPanel.Section>
+                    {folderApp && (
+                      <Action
+                        title="Reset to Default App"
+                        icon={Icon.ArrowCounterClockwise}
+                        onAction={() => resetFolderApp(folder)}
+                      />
+                    )}
+                    <Action
+                      title="Remove Folder"
+                      icon={Icon.Trash}
+                      style={Action.Style.Destructive}
+                      onAction={() => removeFolder(folder)}
+                    />
+                  </ActionPanel.Section>
+                  <ActionPanel.Section>
+                    <Action.ShowInFinder path={folder} />
+                    <Action.CopyToClipboard content={folder} />
+                  </ActionPanel.Section>
                 </ActionPanel>
               }
             />

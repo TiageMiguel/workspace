@@ -15,10 +15,12 @@ export default function SelectEditor({ onSelect }: SelectEditorProps) {
   const setEditor = async (app: Application) => {
     if (onSelect) {
       onSelect(app);
-    } else {
-      await saveStoredApp({ name: app.name, bundleId: app.bundleId || "" });
-      await showToast({ style: Toast.Style.Success, title: "App Updated", message: app.name });
+      return; // Parent handles navigation or state update
     }
+
+    // Default behavior for Settings: save and pop
+    await saveStoredApp({ name: app.name, bundleId: app.bundleId || "" });
+    await showToast({ style: Toast.Style.Success, title: "App Updated", message: app.name });
     pop();
   };
 

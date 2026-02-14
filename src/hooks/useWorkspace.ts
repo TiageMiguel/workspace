@@ -1,16 +1,26 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
+import { useCachedState } from "@raycast/utils";
 import { getGitStatus } from "../utils/git";
-import { getStoredFolders, getStoredApp, getFolderApps } from "../utils/storage";
+import {
+  getStoredFolders,
+  getStoredApp,
+  getFolderApps,
+  getStoredWalkthroughCompleted,
+  setStoredWalkthroughCompleted,
+  saveStoredApp,
+  saveStoredFolders,
+} from "../utils/storage";
 import { Project, App, GitStatus } from "../types";
 import { readdirSync } from "fs";
 import path from "path";
 
 export function useWorkspace() {
-  const [folders, setFolders] = useState<string[]>([]);
-  const [defaultApp, setDefaultApp] = useState<App | null>(null);
-  const [folderApps, setFolderApps] = useState<Record<string, App>>({});
-  const [projectGitStatus, setProjectGitStatus] = useState<Record<string, GitStatus | null>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [folders, setFolders] = useCachedState<string[]>("workspace-folders", []);
+  const [defaultApp, setDefaultApp] = useCachedState<App | null>("default-app", null);
+  const [folderApps, setFolderApps] = useCachedState<Record<string, App>>("folder-apps", {});
+  const [projectGitStatus, setProjectGitStatus] = useCachedState<Record<string, GitStatus | null>>("git-status", {});
+  const [walkthroughCompleted, setWalkthroughCompleted] = useCachedState<boolean>("walkthrough-completed", false);
+  const [isLoading, setIsLoading] = useCachedState<boolean>("is-loading", true);
 
   const getSubdirectories = (parentPath: string): Project[] => {
     try {
@@ -40,26 +50,45 @@ export function useWorkspace() {
   };
 
   const loadData = useCallback(async () => {
-    setIsLoading(true);
-    const [storedFolders, storedApp, storedFolderApps] = await Promise.all([
+    // We don't necessarily need to show a spinner if we have cached data,
+    // but we should refresh the data in the background.
+    const [storedFolders, storedApp, storedFolderApps, storedWalkthroughCompleted] = await Promise.all([
       getStoredFolders(),
       getStoredApp(),
       getFolderApps(),
+      getStoredWalkthroughCompleted(),
     ]);
 
     setFolders(storedFolders);
     setDefaultApp(storedApp);
     setFolderApps(storedFolderApps);
+    setWalkthroughCompleted(storedWalkthroughCompleted);
 
-    // Fetch git statuses
+    // Fetch git statuses for updated list
     const allProjects = storedFolders.flatMap((folder) => getSubdirectories(folder));
     fetchGitStatuses(allProjects);
     setIsLoading(false);
-  }, []);
+  }, [setFolders, setDefaultApp, setFolderApps, setWalkthroughCompleted, setIsLoading]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const setWalkthroughCompletedState = async (completed: boolean) => {
+    await setStoredWalkthroughCompleted(completed);
+    setWalkthroughCompleted(completed);
+  };
+
+  // Helper to ensure LocalStorage stays in sync if we use setters from here
+  const updateFolders = async (newFolders: string[]) => {
+    await saveStoredFolders(newFolders);
+    setFolders(newFolders);
+  };
+
+  const updateDefaultApp = async (app: App | null) => {
+    if (app) await saveStoredApp(app);
+    setDefaultApp(app);
+  };
 
   return {
     folders,
@@ -69,5 +98,9 @@ export function useWorkspace() {
     isLoading,
     loadData,
     getSubdirectories,
+    walkthroughCompleted,
+    setWalkthroughCompleted: setWalkthroughCompletedState,
+    updateFolders,
+    updateDefaultApp,
   };
 }
