@@ -115,7 +115,7 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
             <List.Item
               key={folder}
               title={path.basename(folder)}
-              subtitle={folderApp ? `Opens in ${folderApp.name}` : folder}
+              subtitle={folder}
               icon={Icon.Folder}
               accessories={
                 folderApp
@@ -134,7 +134,12 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
                     <Action.Push
                       title="Set Folder App"
                       icon={Icon.Pencil}
-                      target={<SelectEditor onSelect={(app) => setFolderApp(folder, app)} />}
+                      target={
+                        <SelectEditor
+                          onSelect={(app) => setFolderApp(folder, app)}
+                          onReset={() => resetFolderApp(folder)}
+                        />
+                      }
                     />
                     {index > 0 && (
                       <Action
@@ -156,8 +161,9 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
                   <ActionPanel.Section>
                     {folderApp && (
                       <Action
-                        title="Reset to Default App"
-                        icon={Icon.ArrowCounterClockwise}
+                        title="Remove Folder Application"
+                        icon={Icon.XMarkCircle}
+                        shortcut={{ modifiers: ["cmd", "shift"], key: "backspace" }}
                         onAction={() => resetFolderApp(folder)}
                       />
                     )}

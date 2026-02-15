@@ -6,16 +6,18 @@ import { saveStoredApp } from "../utils/storage";
 
 interface SelectEditorProps {
   onSelect?: (app: Application) => void;
+  onReset?: () => void;
 }
 
-export default function SelectEditor({ onSelect }: SelectEditorProps) {
+export default function SelectEditor({ onSelect, onReset }: SelectEditorProps) {
   const { pop } = useNavigation();
   const { isLoading, data: apps } = usePromise(getApplications);
 
   const setEditor = async (app: Application) => {
     if (onSelect) {
       onSelect(app);
-      return; // Parent handles navigation or state update
+      pop(); // Fix: Return to settings after selection
+      return;
     }
 
     // Default behavior for Settings: save and pop
@@ -26,6 +28,24 @@ export default function SelectEditor({ onSelect }: SelectEditorProps) {
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search for an application...">
+      {onReset && (
+        <List.Item
+          title="Use Default App"
+          subtitle="Remove folder-specific override"
+          icon={Icon.ArrowCounterClockwise}
+          actions={
+            <ActionPanel>
+              <Action
+                title="Select Default App"
+                onAction={() => {
+                  onReset();
+                  pop();
+                }}
+              />
+            </ActionPanel>
+          }
+        />
+      )}
       {apps?.map((app) => (
         <List.Item
           key={app.path}
