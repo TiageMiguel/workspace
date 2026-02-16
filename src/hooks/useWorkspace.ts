@@ -9,6 +9,8 @@ import {
   setStoredWalkthroughCompleted,
   saveStoredApp,
   saveStoredFolders,
+  getStoredPinnedProjects,
+  saveStoredPinnedProjects,
 } from "../utils/storage";
 import { Project, App, GitStatus } from "../types";
 import { readdirSync } from "fs";
@@ -16,6 +18,7 @@ import path from "path";
 
 export function useWorkspace() {
   const [folders, setFolders] = useCachedState<string[]>("workspace-folders", []);
+  const [pinnedProjects, setPinnedProjects] = useCachedState<string[]>("workspace-pinned-projects", []);
   const [defaultApp, setDefaultApp] = useCachedState<App | null>("default-app", null);
   const [folderApps, setFolderApps] = useCachedState<Record<string, App>>("folder-apps", {});
   const [projectGitStatus, setProjectGitStatus] = useCachedState<Record<string, GitStatus | null>>("git-status", {});
@@ -52,23 +55,26 @@ export function useWorkspace() {
   const loadData = useCallback(async () => {
     // We don't necessarily need to show a spinner if we have cached data,
     // but we should refresh the data in the background.
-    const [storedFolders, storedApp, storedFolderApps, storedWalkthroughCompleted] = await Promise.all([
-      getStoredFolders(),
-      getStoredApp(),
-      getFolderApps(),
-      getStoredWalkthroughCompleted(),
-    ]);
+    const [storedFolders, storedApp, storedFolderApps, storedWalkthroughCompleted, storedPinnedProjects] =
+      await Promise.all([
+        getStoredFolders(),
+        getStoredApp(),
+        getFolderApps(),
+        getStoredWalkthroughCompleted(),
+        getStoredPinnedProjects(),
+      ]);
 
     setFolders(storedFolders);
     setDefaultApp(storedApp);
     setFolderApps(storedFolderApps);
     setWalkthroughCompleted(storedWalkthroughCompleted);
+    setPinnedProjects(storedPinnedProjects);
 
     // Fetch git statuses for updated list
     const allProjects = storedFolders.flatMap((folder) => getSubdirectories(folder));
     fetchGitStatuses(allProjects);
     setIsLoading(false);
-  }, [setFolders, setDefaultApp, setFolderApps, setWalkthroughCompleted, setIsLoading]);
+  }, [setFolders, setDefaultApp, setFolderApps, setWalkthroughCompleted, setPinnedProjects, setIsLoading]);
 
   useEffect(() => {
     loadData();
@@ -77,6 +83,15 @@ export function useWorkspace() {
   const setWalkthroughCompletedState = async (completed: boolean) => {
     await setStoredWalkthroughCompleted(completed);
     setWalkthroughCompleted(completed);
+  };
+
+  const togglePinProject = async (projectPath: string) => {
+    const newPinned = pinnedProjects.includes(projectPath)
+      ? pinnedProjects.filter((p) => p !== projectPath)
+      : [...pinnedProjects, projectPath];
+
+    await saveStoredPinnedProjects(newPinned);
+    setPinnedProjects(newPinned);
   };
 
   // Helper to ensure LocalStorage stays in sync if we use setters from here
@@ -92,6 +107,7 @@ export function useWorkspace() {
 
   return {
     folders,
+    pinnedProjects,
     defaultApp,
     folderApps,
     projectGitStatus,
@@ -100,6 +116,7 @@ export function useWorkspace() {
     getSubdirectories,
     walkthroughCompleted,
     setWalkthroughCompleted: setWalkthroughCompletedState,
+    togglePinProject,
     updateFolders,
     updateDefaultApp,
   };

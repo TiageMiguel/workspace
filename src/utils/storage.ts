@@ -4,8 +4,18 @@ import {
   STORAGE_KEY_APP,
   STORAGE_KEY_FOLDER_APPS,
   STORAGE_KEY_WALKTHROUGH_COMPLETED,
+  STORAGE_KEY_PINNED_PROJECTS,
 } from "./constants";
 import { App } from "../types";
+
+export async function getStoredPinnedProjects(): Promise<string[]> {
+  const raw = await LocalStorage.getItem<string>(STORAGE_KEY_PINNED_PROJECTS);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export async function saveStoredPinnedProjects(paths: string[]): Promise<void> {
+  await LocalStorage.setItem(STORAGE_KEY_PINNED_PROJECTS, JSON.stringify(paths));
+}
 
 export async function getStoredFolders(): Promise<string[]> {
   const raw = await LocalStorage.getItem<string>(STORAGE_KEY_FOLDERS);

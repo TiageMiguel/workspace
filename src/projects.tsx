@@ -1,5 +1,5 @@
 import { ActionPanel, Action, List, Icon, Color } from "@raycast/api";
-import AddFolderForm from "./components/AddFolderForm";
+import { useState } from "react";
 import Settings from "./components/Settings";
 import Walkthrough from "./components/Walkthrough";
 import path from "path";
@@ -10,135 +10,135 @@ import { Project } from "./types";
 export default function Command() {
   const {
     folders: parentFolders,
-    defaultApp: defaultEditor,
-    folderApps: folderEditors,
+    pinnedProjects,
+    defaultApp,
+    folderApps,
     projectGitStatus,
     isLoading,
     loadData,
     getSubdirectories,
     walkthroughCompleted,
     setWalkthroughCompleted,
+    togglePinProject,
   } = useWorkspace();
 
-  const allProjects: { folder: string; projects: Project[] }[] = parentFolders.map((folder) => ({
-    folder,
-    projects: getSubdirectories(folder).map((p) => ({
-      ...p,
-      gitStatus: projectGitStatus[p.fullPath],
-    })),
+  const [searchText, setSearchText] = useState("");
+
+  const filteredFolders = parentFolders.map((folder) => ({
+    name: path.basename(folder),
+    path: folder,
+    projects: getSubdirectories(folder).filter((p) => p.name.toLowerCase().includes(searchText.toLowerCase())),
   }));
 
-  const globalEditorName = defaultEditor?.name || "Select App to open";
+  const allProjects = filteredFolders.flatMap((f) => f.projects);
+  const pinnedList = allProjects.filter((p) => pinnedProjects.includes(p.fullPath));
 
   if (!isLoading && !walkthroughCompleted) {
     return (
       <Walkthrough
         onComplete={() => setWalkthroughCompleted(true)}
         folders={parentFolders}
-        defaultApp={defaultEditor}
+        defaultApp={defaultApp}
         loadData={loadData}
       />
     );
   }
 
-  return (
-    <List isLoading={isLoading} searchBarPlaceholder="Search projects...">
-      {parentFolders.length === 0 && !isLoading ? (
-        <List.EmptyView
-          title="No Workspace Folders Added"
-          description="Use the 'Add Workspace Folder' command to add one."
-          icon={Icon.Folder}
-          actions={
-            <ActionPanel>
-              <Action.Push title="Add Workspace Folder" icon={Icon.Plus} target={<AddFolderForm />} onPop={loadData} />
+  const ProjectItem = ({ project, folderPath }: { project: Project; folderPath: string }) => {
+    const gitStatus = projectGitStatus[project.fullPath];
+    const folderApp = folderApps[folderPath];
+    const appToUse = folderApp || defaultApp;
+    const isPinned = pinnedProjects.includes(project.fullPath);
+
+    return (
+      <List.Item
+        title={project.name}
+        subtitle={isPinned ? path.dirname(project.fullPath) : ""}
+        icon={Icon.Folder}
+        accessories={[
+          ...(gitStatus
+            ? [
+                {
+                  tag: {
+                    value: `${gitStatus.pull ? `${gitStatus.pull}↓ ` : ""}${
+                      gitStatus.push ? `${gitStatus.push}↑ ` : ""
+                    }${gitStatus.branch}`,
+                    color: Color.Green,
+                  },
+                  tooltip: `Branch: ${gitStatus.branch}\nPull: ${gitStatus.pull || 0}\nPush: ${gitStatus.push || 0}`,
+                },
+              ]
+            : []),
+        ]}
+        actions={
+          <ActionPanel>
+            <ActionPanel.Section>
+              <Action.Open
+                title={`Open in ${appToUse?.name || "Default App"}`}
+                target={project.fullPath}
+                application={appToUse?.bundleId}
+              />
+              <Action
+                title={isPinned ? "Unpin Project" : "Pin Project"}
+                icon={isPinned ? Icon.PinDisabled : Icon.Pin}
+                shortcut={{ modifiers: ["cmd"], key: "p" }}
+                onAction={() => togglePinProject(project.fullPath)}
+              />
+            </ActionPanel.Section>
+            <ActionPanel.Section>
+              <Action.ShowInFinder path={project.fullPath} />
+              <Action.OpenWith path={project.fullPath} />
+            </ActionPanel.Section>
+            <ActionPanel.Section title="Copy">
+              <Action.CopyToClipboard title="Copy Project Name" content={project.name} />
+              <Action.CopyToClipboard
+                title="Copy Project Path"
+                content={project.fullPath}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+              />
+            </ActionPanel.Section>
+            <ActionPanel.Section>
               <Action.Push
                 title="Settings"
                 icon={Icon.Gear}
-                shortcut={{ modifiers: ["cmd", "shift"], key: "," }}
                 target={<Settings onFoldersChanged={loadData} />}
-                onPop={loadData}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "," }}
               />
+            </ActionPanel.Section>
+          </ActionPanel>
+        }
+      />
+    );
+  };
+
+  return (
+    <List isLoading={isLoading} searchBarPlaceholder="Search projects..." onSearchTextChange={setSearchText} throttle>
+      {pinnedList.length > 0 && (
+        <List.Section title="Pinned">
+          {pinnedList.map((project) => (
+            <ProjectItem key={`pinned-${project.fullPath}`} project={project} folderPath={project.parentFolder} />
+          ))}
+        </List.Section>
+      )}
+
+      {filteredFolders.map((folder) => (
+        <List.Section key={folder.path} title={folder.name} subtitle={folder.path}>
+          {folder.projects.map((project) => (
+            <ProjectItem key={project.fullPath} project={project} folderPath={folder.path} />
+          ))}
+        </List.Section>
+      ))}
+
+      {parentFolders.length === 0 && (
+        <List.EmptyView
+          title="No Project Folders"
+          description="Add a folder in settings to see your projects."
+          actions={
+            <ActionPanel>
+              <Action.Push title="Open Settings" target={<Settings onFoldersChanged={loadData} />} />
             </ActionPanel>
           }
         />
-      ) : (
-        allProjects.map(({ folder, projects }) => {
-          const folderEditor = folderEditors[folder] || defaultEditor;
-          const currentEditorName = folderEditor?.name || globalEditorName;
-          const currentEditorBundleId = folderEditor?.bundleId;
-
-          return (
-            <List.Section key={folder} title={path.basename(folder)} subtitle={folder}>
-              {projects.map((project) => (
-                <List.Item
-                  key={project.fullPath}
-                  icon={{ source: Icon.Folder, tintColor: Color.Blue }}
-                  title={project.name}
-                  subtitle={path.basename(folder)}
-                  accessories={[
-                    project.gitStatus
-                      ? {
-                          tag: {
-                            value: `${project.gitStatus.pull ? `${project.gitStatus.pull}↓ ` : ""}${
-                              project.gitStatus.push ? `${project.gitStatus.push}↑ ` : ""
-                            }${project.gitStatus.branch}`,
-                            color: Color.Green,
-                          },
-                          tooltip: `Branch: ${project.gitStatus.branch}\nPull: ${project.gitStatus.pull || 0}\nPush: ${project.gitStatus.push || 0}`,
-                        }
-                      : {},
-                  ]}
-                  actions={
-                    <ActionPanel>
-                      <ActionPanel.Section title="Open">
-                        {currentEditorBundleId ? (
-                          <Action.Open
-                            title={`Open in ${currentEditorName}`}
-                            target={project.fullPath}
-                            application={currentEditorBundleId}
-                            icon={Icon.Code}
-                          />
-                        ) : (
-                          <Action.Push
-                            title="Select Code Editor"
-                            icon={Icon.Gear}
-                            target={<Settings onFoldersChanged={loadData} />}
-                            onPop={loadData}
-                          />
-                        )}
-                        <Action.Push
-                          title="Add Workspace Folder"
-                          icon={Icon.Plus}
-                          shortcut={{ modifiers: ["cmd"], key: "enter" }}
-                          target={<AddFolderForm />}
-                          onPop={loadData}
-                        />
-                      </ActionPanel.Section>
-                      <ActionPanel.Section title="Actions">
-                        <Action.ShowInFinder path={project.fullPath} />
-                        <Action.OpenWith path={project.fullPath} />
-                        <Action.CopyToClipboard
-                          title="Copy Path"
-                          content={project.fullPath}
-                          shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-                        />
-                      </ActionPanel.Section>
-                      <ActionPanel.Section title="Settings">
-                        <Action.Push
-                          title="Open Settings"
-                          icon={Icon.Gear}
-                          shortcut={{ modifiers: ["cmd", "shift"], key: "," }}
-                          target={<Settings onFoldersChanged={loadData} />}
-                          onPop={loadData}
-                        />
-                      </ActionPanel.Section>
-                    </ActionPanel>
-                  }
-                />
-              ))}
-            </List.Section>
-          );
-        })
       )}
     </List>
   );

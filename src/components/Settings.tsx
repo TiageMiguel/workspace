@@ -145,7 +145,7 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
                       <Action
                         title="Move up"
                         icon={Icon.ChevronUp}
-                        shortcut={{ modifiers: ["opt"], key: "arrowUp" }}
+                        shortcut={{ modifiers: ["cmd", "opt"], key: "arrowUp" }}
                         onAction={() => moveFolder(index, "up")}
                       />
                     )}
@@ -153,7 +153,7 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
                       <Action
                         title="Move Down"
                         icon={Icon.ChevronDown}
-                        shortcut={{ modifiers: ["opt"], key: "arrowDown" }}
+                        shortcut={{ modifiers: ["cmd", "opt"], key: "arrowDown" }}
                         onAction={() => moveFolder(index, "down")}
                       />
                     )}
@@ -174,9 +174,13 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
                       onAction={() => removeFolder(folder)}
                     />
                   </ActionPanel.Section>
-                  <ActionPanel.Section>
-                    <Action.ShowInFinder path={folder} />
-                    <Action.CopyToClipboard content={folder} />
+                  <ActionPanel.Section title="Copy">
+                    <Action.CopyToClipboard title="Copy Folder Name" content={path.basename(folder)} />
+                    <Action.CopyToClipboard
+                      title="Copy Folder Path"
+                      content={folder}
+                      shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+                    />
                   </ActionPanel.Section>
                 </ActionPanel>
               }
