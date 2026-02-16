@@ -2,13 +2,13 @@ import { useCallback, useEffect } from "react";
 import { useCachedState } from "@raycast/utils";
 import { getGitStatus } from "../utils/git";
 import {
-  getStoredFolders,
+  getStoredWorkspaces,
   getStoredApp,
-  getFolderApps,
+  getWorkspaceApps,
   getStoredWalkthroughCompleted,
   setStoredWalkthroughCompleted,
   saveStoredApp,
-  saveStoredFolders,
+  saveStoredWorkspaces,
   getStoredPinnedProjects,
   saveStoredPinnedProjects,
 } from "../utils/storage";
@@ -17,10 +17,10 @@ import { readdirSync } from "fs";
 import path from "path";
 
 export function useWorkspace() {
-  const [folders, setFolders] = useCachedState<string[]>("workspace-folders", []);
+  const [workspaces, setWorkspaces] = useCachedState<string[]>("workspace-workspaces", []);
   const [pinnedProjects, setPinnedProjects] = useCachedState<string[]>("workspace-pinned-projects", []);
   const [defaultApp, setDefaultApp] = useCachedState<App | null>("default-app", null);
-  const [folderApps, setFolderApps] = useCachedState<Record<string, App>>("folder-apps", {});
+  const [workspaceApps, setWorkspaceApps] = useCachedState<Record<string, App>>("workspace-apps", {});
   const [projectGitStatus, setProjectGitStatus] = useCachedState<Record<string, GitStatus | null>>("git-status", {});
   const [walkthroughCompleted, setWalkthroughCompleted] = useCachedState<boolean>("walkthrough-completed", false);
   const [isLoading, setIsLoading] = useCachedState<boolean>("is-loading", true);
@@ -44,37 +44,34 @@ export function useWorkspace() {
   const fetchGitStatuses = async (projects: Project[]) => {
     const statusMap: Record<string, GitStatus | null> = {};
     await Promise.all(
-      projects.map(async (p) => {
-        const status = await getGitStatus(p.fullPath);
-        statusMap[p.fullPath] = status;
+      projects.map(async (project) => {
+        const status = await getGitStatus(project.fullPath);
+        statusMap[project.fullPath] = status;
       }),
     );
     setProjectGitStatus((prev) => ({ ...prev, ...statusMap }));
   };
 
   const loadData = useCallback(async () => {
-    // We don't necessarily need to show a spinner if we have cached data,
-    // but we should refresh the data in the background.
-    const [storedFolders, storedApp, storedFolderApps, storedWalkthroughCompleted, storedPinnedProjects] =
+    const [storedWorkspaces, storedApp, storedWorkspaceApps, storedWalkthroughCompleted, storedPinnedProjects] =
       await Promise.all([
-        getStoredFolders(),
+        getStoredWorkspaces(),
         getStoredApp(),
-        getFolderApps(),
+        getWorkspaceApps(),
         getStoredWalkthroughCompleted(),
         getStoredPinnedProjects(),
       ]);
 
-    setFolders(storedFolders);
+    setWorkspaces(storedWorkspaces);
     setDefaultApp(storedApp);
-    setFolderApps(storedFolderApps);
+    setWorkspaceApps(storedWorkspaceApps);
     setWalkthroughCompleted(storedWalkthroughCompleted);
     setPinnedProjects(storedPinnedProjects);
 
-    // Fetch git statuses for updated list
-    const allProjects = storedFolders.flatMap((folder) => getSubdirectories(folder));
+    const allProjects = storedWorkspaces.flatMap((workspace) => getSubdirectories(workspace));
     fetchGitStatuses(allProjects);
     setIsLoading(false);
-  }, [setFolders, setDefaultApp, setFolderApps, setWalkthroughCompleted, setPinnedProjects, setIsLoading]);
+  }, [setWorkspaces, setDefaultApp, setWorkspaceApps, setWalkthroughCompleted, setPinnedProjects, setIsLoading]);
 
   useEffect(() => {
     loadData();
@@ -87,17 +84,16 @@ export function useWorkspace() {
 
   const togglePinProject = async (projectPath: string) => {
     const newPinned = pinnedProjects.includes(projectPath)
-      ? pinnedProjects.filter((p) => p !== projectPath)
+      ? pinnedProjects.filter((projectPathItem) => projectPathItem !== projectPath)
       : [...pinnedProjects, projectPath];
 
     await saveStoredPinnedProjects(newPinned);
     setPinnedProjects(newPinned);
   };
 
-  // Helper to ensure LocalStorage stays in sync if we use setters from here
-  const updateFolders = async (newFolders: string[]) => {
-    await saveStoredFolders(newFolders);
-    setFolders(newFolders);
+  const updateWorkspaces = async (newWorkspaces: string[]) => {
+    await saveStoredWorkspaces(newWorkspaces);
+    setWorkspaces(newWorkspaces);
   };
 
   const updateDefaultApp = async (app: App | null) => {
@@ -106,10 +102,10 @@ export function useWorkspace() {
   };
 
   return {
-    folders,
+    workspaces,
     pinnedProjects,
     defaultApp,
-    folderApps,
+    workspaceApps,
     projectGitStatus,
     isLoading,
     loadData,
@@ -117,7 +113,7 @@ export function useWorkspace() {
     walkthroughCompleted,
     setWalkthroughCompleted: setWalkthroughCompletedState,
     togglePinProject,
-    updateFolders,
+    updateWorkspaces,
     updateDefaultApp,
   };
 }

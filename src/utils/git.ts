@@ -18,7 +18,6 @@ export async function getGitStatus(repoPath: string): Promise<GitStatus | null> 
   }
 
   try {
-    // Get branch name
     const { stdout: branch } = await execAsync("git symbolic-ref --short HEAD || git rev-parse --abbrev-ref HEAD", {
       cwd: repoPath,
       encoding: "utf8",
@@ -26,8 +25,6 @@ export async function getGitStatus(repoPath: string): Promise<GitStatus | null> 
 
     const branchName = branch.trim();
 
-    // Get pull/push counts
-    // 'git rev-list --left-right --count HEAD...@{u}' returns "0\t0" (behind \t ahead)
     try {
       const { stdout: counts } = await execAsync("git rev-list --left-right --count HEAD...@{u}", {
         cwd: repoPath,
@@ -40,13 +37,11 @@ export async function getGitStatus(repoPath: string): Promise<GitStatus | null> 
         push: ahead || 0,
       };
     } catch {
-      // No upstream configured or other error getting counts
       return {
         branch: branchName,
       };
     }
   } catch {
-    // Not a git repo or error
     return null;
   }
 }

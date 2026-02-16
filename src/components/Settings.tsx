@@ -1,129 +1,163 @@
 import { Action, ActionPanel, Icon, List, showToast, Toast, confirmAlert, Alert } from "@raycast/api";
 import { useState, useEffect, useCallback } from "react";
 import path from "path";
-import AddFolderForm from "./AddFolderForm";
+import AddWorkspaceForm from "./AddWorkspaceForm";
 import SelectEditor from "./SelectEditor";
+import LanguageSettings from "./LanguageSettings";
+import { useI18n } from "../hooks/useI18n";
+import { getLanguageName } from "../utils/i18n";
 
 import { type Application } from "@raycast/api";
 
-import { getStoredFolders, saveStoredFolders, getStoredApp, getFolderApps, saveFolderApps } from "../utils/storage";
+import {
+  getStoredWorkspaces,
+  saveStoredWorkspaces,
+  getStoredApp,
+  getWorkspaceApps,
+  saveWorkspaceApps,
+} from "../utils/storage";
 import { App } from "../types";
 
 interface SettingsProps {
-  onFoldersChanged: () => Promise<void>;
+  onWorkspacesChanged?: () => Promise<void>;
+  showGeneral?: boolean;
 }
 
-export default function Settings({ onFoldersChanged }: SettingsProps) {
-  const [folders, setFolders] = useState<string[]>([]);
+export default function Settings({ onWorkspacesChanged, showGeneral = true }: SettingsProps) {
+  const [workspaces, setWorkspaces] = useState<string[]>([]);
   const [defaultApp, setDefaultApp] = useState<App | null>(null);
-  const [folderApps, setFolderApps] = useState<Record<string, App>>({});
+  const [workspaceApps, setWorkspaceApps] = useState<Record<string, App>>({});
+  const { t, language } = useI18n();
 
   const loadSettings = useCallback(async () => {
-    const [f, a, fa] = await Promise.all([getStoredFolders(), getStoredApp(), getFolderApps()]);
-    setFolders(f);
-    setDefaultApp(a);
-    setFolderApps(fa);
+    const [storedWorkspaces, storedDefaultApp, storedWorkspaceApps] = await Promise.all([
+      getStoredWorkspaces(),
+      getStoredApp(),
+      getWorkspaceApps(),
+    ]);
+    setWorkspaces(storedWorkspaces);
+    setDefaultApp(storedDefaultApp);
+    setWorkspaceApps(storedWorkspaceApps);
   }, []);
 
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
 
-  async function removeFolder(folderPath: string) {
+  async function removeWorkspace(workspacePath: string) {
     if (
       await confirmAlert({
-        title: "Remove Folder",
-        message: `Remove "${path.basename(folderPath)}" from your project folders?`,
+        title: t("settings.workspaces.removeWorkspace"),
+        message: `Remove "${path.basename(workspacePath)}" from your workspace projects?`,
         primaryAction: { title: "Remove", style: Alert.ActionStyle.Destructive },
       })
     ) {
-      const newFolders = folders.filter((f) => f !== folderPath);
-      await saveStoredFolders(newFolders);
+      const newWorkspaces = workspaces.filter((workspacePathItem) => workspacePathItem !== workspacePath);
+      await saveStoredWorkspaces(newWorkspaces);
 
-      // Cleanup app override
-      const newFolderApps = { ...folderApps };
-      delete newFolderApps[folderPath];
-      await saveFolderApps(newFolderApps);
+      const newWorkspaceApps = { ...workspaceApps };
+      delete newWorkspaceApps[workspacePath];
+      await saveWorkspaceApps(newWorkspaceApps);
 
-      setFolders(newFolders);
-      setFolderApps(newFolderApps);
-      await onFoldersChanged();
-      await showToast({ style: Toast.Style.Success, title: "Folder removed" });
+      setWorkspaces(newWorkspaces);
+      setWorkspaceApps(newWorkspaceApps);
+      if (onWorkspacesChanged) {
+        await onWorkspacesChanged();
+      }
+      await showToast({ style: Toast.Style.Success, title: t("settings.toasts.workspaceRemoved") });
     }
   }
 
-  async function setFolderApp(folderPath: string, app: Application) {
-    const newFolderApps = {
-      ...folderApps,
-      [folderPath]: { name: app.name, bundleId: app.bundleId || "" },
+  async function setWorkspaceApp(workspacePath: string, app: Application) {
+    const newWorkspaceApps = {
+      ...workspaceApps,
+      [workspacePath]: { name: app.name, bundleId: app.bundleId || "" },
     };
-    await saveFolderApps(newFolderApps);
-    setFolderApps(newFolderApps);
+    await saveWorkspaceApps(newWorkspaceApps);
+    setWorkspaceApps(newWorkspaceApps);
     await showToast({
       style: Toast.Style.Success,
-      title: "Folder app updated",
-      message: `${path.basename(folderPath)} -> ${app.name}`,
+      title: t("settings.toasts.appUpdated"),
+      message: `${path.basename(workspacePath)} -> ${app.name}`,
     });
   }
 
-  async function resetFolderApp(folderPath: string) {
-    const newFolderApps = { ...folderApps };
-    delete newFolderApps[folderPath];
-    await saveFolderApps(newFolderApps);
-    setFolderApps(newFolderApps);
-    await showToast({ style: Toast.Style.Success, title: "Folder app reset" });
+  async function resetWorkspaceApp(workspacePath: string) {
+    const newWorkspaceApps = { ...workspaceApps };
+    delete newWorkspaceApps[workspacePath];
+    await saveWorkspaceApps(newWorkspaceApps);
+    setWorkspaceApps(newWorkspaceApps);
+    await showToast({ style: Toast.Style.Success, title: t("settings.toasts.appReset") });
   }
 
-  async function moveFolder(index: number, direction: "up" | "down") {
+  async function moveWorkspace(index: number, direction: "up" | "down") {
     const newIndex = direction === "up" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= folders.length) return;
+    if (newIndex < 0 || newIndex >= workspaces.length) return;
 
-    const newFolders = [...folders];
-    const [moved] = newFolders.splice(index, 1);
-    newFolders.splice(newIndex, 0, moved);
+    const newWorkspaces = [...workspaces];
+    const [moved] = newWorkspaces.splice(index, 1);
+    newWorkspaces.splice(newIndex, 0, moved);
 
-    await saveStoredFolders(newFolders);
-    setFolders(newFolders);
-    await onFoldersChanged();
-    await showToast({ style: Toast.Style.Success, title: "Order updated" });
+    await saveStoredWorkspaces(newWorkspaces);
+    setWorkspaces(newWorkspaces);
+    if (onWorkspacesChanged) {
+      await onWorkspacesChanged();
+    }
+    await showToast({ style: Toast.Style.Success, title: t("settings.toasts.workspaceMoved") });
   }
 
   return (
-    <List navigationTitle="Settings">
-      <List.Section title="General">
-        <List.Item
-          title="Default App"
-          subtitle={defaultApp?.name || "Not Selected"}
-          icon={Icon.AppWindow}
-          actions={
-            <ActionPanel>
-              <Action.Push
-                title="Select Default App"
-                icon={Icon.Pencil}
-                target={<SelectEditor />}
-                onPop={loadSettings}
-              />
-            </ActionPanel>
-          }
-        />
-      </List.Section>
+    <List navigationTitle={showGeneral ? t("settings.title") : t("settings.workspaces.title")}>
+      {showGeneral && (
+        <List.Section title={t("settings.general.title")}>
+          <List.Item
+            title={t("settings.general.defaultApp.title")}
+            subtitle={defaultApp?.name || t("selectEditor.default.subtitle")}
+            icon={Icon.AppWindow}
+            actions={
+              <ActionPanel>
+                <Action.Push
+                  title={t("selectEditor.default.action")}
+                  icon={Icon.Pencil}
+                  target={<SelectEditor />}
+                  onPop={loadSettings}
+                />
+              </ActionPanel>
+            }
+          />
+          <List.Item
+            title={t("settings.general.language.title")}
+            subtitle={getLanguageName(language)}
+            icon={Icon.Globe}
+            actions={
+              <ActionPanel>
+                <Action.Push
+                  title={t("settings.general.language.title")}
+                  icon={Icon.Pencil}
+                  target={<LanguageSettings />}
+                />
+              </ActionPanel>
+            }
+          />
+        </List.Section>
+      )}
 
-      <List.Section title="Managed Folders">
-        {folders.map((folder, index) => {
-          const folderApp = folderApps[folder];
+      <List.Section title={t("settings.workspaces.title")}>
+        {workspaces.map((workspace, index) => {
+          const workspaceApp = workspaceApps[workspace];
           return (
             <List.Item
-              key={folder}
-              title={path.basename(folder)}
-              subtitle={folder}
+              key={workspace}
+              title={path.basename(workspace)}
+              subtitle={workspace}
               icon={Icon.Folder}
               accessories={
-                folderApp
+                workspaceApp
                   ? [
                       {
-                        tag: { value: folderApp.name, color: Icon.AppWindow },
+                        tag: { value: workspaceApp.name, color: Icon.AppWindow },
                         icon: Icon.AppWindow,
-                        tooltip: "Custom App Set",
+                        tooltip: t("settings.workspaces.appSet"),
                       },
                     ]
                   : []
@@ -132,53 +166,56 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
                 <ActionPanel>
                   <ActionPanel.Section>
                     <Action.Push
-                      title="Set Folder App"
+                      title={t("settings.workspaces.setWorkspaceApp")}
                       icon={Icon.Pencil}
                       target={
                         <SelectEditor
-                          onSelect={(app) => setFolderApp(folder, app)}
-                          onReset={() => resetFolderApp(folder)}
+                          onSelect={(app) => setWorkspaceApp(workspace, app)}
+                          onReset={() => resetWorkspaceApp(workspace)}
                         />
                       }
                     />
                     {index > 0 && (
                       <Action
-                        title="Move up"
+                        title={t("settings.workspaces.moveUp")}
                         icon={Icon.ChevronUp}
                         shortcut={{ modifiers: ["cmd", "opt"], key: "arrowUp" }}
-                        onAction={() => moveFolder(index, "up")}
+                        onAction={() => moveWorkspace(index, "up")}
                       />
                     )}
-                    {index < folders.length - 1 && (
+                    {index < workspaces.length - 1 && (
                       <Action
-                        title="Move Down"
+                        title={t("settings.workspaces.moveDown")}
                         icon={Icon.ChevronDown}
                         shortcut={{ modifiers: ["cmd", "opt"], key: "arrowDown" }}
-                        onAction={() => moveFolder(index, "down")}
+                        onAction={() => moveWorkspace(index, "down")}
                       />
                     )}
                   </ActionPanel.Section>
                   <ActionPanel.Section>
-                    {folderApp && (
+                    {workspaceApp && (
                       <Action
-                        title="Remove Folder Application"
+                        title={t("settings.workspaces.removeApp")}
                         icon={Icon.XMarkCircle}
                         shortcut={{ modifiers: ["cmd", "shift"], key: "backspace" }}
-                        onAction={() => resetFolderApp(folder)}
+                        onAction={() => resetWorkspaceApp(workspace)}
                       />
                     )}
                     <Action
-                      title="Remove Folder"
+                      title={t("settings.workspaces.removeWorkspace")}
                       icon={Icon.Trash}
                       style={Action.Style.Destructive}
-                      onAction={() => removeFolder(folder)}
+                      onAction={() => removeWorkspace(workspace)}
                     />
                   </ActionPanel.Section>
-                  <ActionPanel.Section title="Copy">
-                    <Action.CopyToClipboard title="Copy Folder Name" content={path.basename(folder)} />
+                  <ActionPanel.Section title={t("workspace.sections.copy")}>
                     <Action.CopyToClipboard
-                      title="Copy Folder Path"
-                      content={folder}
+                      title={t("settings.workspaces.copyName")}
+                      content={path.basename(workspace)}
+                    />
+                    <Action.CopyToClipboard
+                      title={t("settings.workspaces.copyPath")}
+                      content={workspace}
                       shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
                     />
                   </ActionPanel.Section>
@@ -188,16 +225,18 @@ export default function Settings({ onFoldersChanged }: SettingsProps) {
           );
         })}
         <List.Item
-          title="Add Workspace Folder"
+          title={t("settings.workspaces.addWorkspace")}
           icon={Icon.Plus}
           actions={
             <ActionPanel>
               <Action.Push
-                title="Add Folder"
-                target={<AddFolderForm />}
+                title={t("settings.workspaces.addWorkspace")}
+                target={<AddWorkspaceForm />}
                 onPop={() => {
                   loadSettings();
-                  onFoldersChanged();
+                  if (onWorkspacesChanged) {
+                    onWorkspacesChanged();
+                  }
                 }}
               />
             </ActionPanel>

@@ -1,57 +1,68 @@
 import { ActionPanel, Action, Icon, List, Color } from "@raycast/api";
 import { getProgressIcon } from "@raycast/utils";
-import AddFolderForm from "./AddFolderForm";
+import AddWorkspaceForm from "./AddWorkspaceForm";
 import SelectEditor from "./SelectEditor";
 import { App } from "../types";
+import { useI18n } from "../hooks/useI18n";
 
 interface WalkthroughProps {
   onComplete: () => void;
-  folders: string[];
+  workspaces: string[];
   defaultApp: App | null;
   loadData: () => Promise<void>;
 }
 
-export default function Walkthrough({ onComplete, folders, defaultApp, loadData }: WalkthroughProps) {
-  const hasFolders = folders.length > 0;
+export default function Walkthrough({ onComplete, workspaces, defaultApp, loadData }: WalkthroughProps) {
+  const { t } = useI18n();
+  const hasWorkspaces = workspaces.length > 0;
   const hasApp = !!defaultApp;
-  const isReady = hasFolders && hasApp;
+  const isReady = hasWorkspaces && hasApp;
 
   const handleFinish = async () => {
-    // await showHUD("🎉 You're all set!");
     onComplete();
   };
 
   return (
     <List>
-      <List.Section title="Welcome to Workspace Projects 🚀">
+      <List.Section title={t("walkthrough.title")}>
         <List.Item
-          title="1. Add Workspace Project Folder"
-          subtitle={hasFolders ? `${folders[0]}` : "Select a folder containing your projects"}
-          icon={getProgressIcon(hasFolders ? 1 : 0, Color.Green)}
+          title={t("walkthrough.step1.title")}
+          subtitle={hasWorkspaces ? `${workspaces[0]}` : t("walkthrough.step1.subtitle")}
+          icon={getProgressIcon(hasWorkspaces ? 1 : 0, Color.Green)}
           actions={
             <ActionPanel>
-              <Action.Push title="Add Folder" icon={Icon.Folder} target={<AddFolderForm />} onPop={loadData} />
+              <Action.Push
+                title={t("walkthrough.actions.addWorkspace")}
+                icon={Icon.Folder}
+                target={<AddWorkspaceForm />}
+                onPop={loadData}
+              />
             </ActionPanel>
           }
         />
         <List.Item
-          title="2. Default App"
-          subtitle={hasApp ? `Selected App: ${defaultApp.name}` : "Choose the app to open your projects"}
+          title={t("walkthrough.step2.title")}
+          subtitle={hasApp ? `Selected App: ${defaultApp.name}` : t("walkthrough.step2.subtitle")}
           icon={getProgressIcon(hasApp ? 1 : 0, Color.Green)}
           actions={
             <ActionPanel>
-              <Action.Push title="Select Editor" icon={Icon.AppWindow} target={<SelectEditor />} onPop={loadData} />
+              <Action.Push
+                title={t("walkthrough.actions.selectEditor")}
+                icon={Icon.AppWindow}
+                target={<SelectEditor />}
+                onPop={loadData}
+              />
             </ActionPanel>
           }
         />
         {isReady && (
           <List.Item
-            title="3. Finish Setup"
-            subtitle="You're ready to go!"
+            title={t("walkthrough.step3.title")}
+            subtitle={t("walkthrough.step3.subtitle")}
             icon={{ source: Icon.CheckCircle, tintColor: Color.Green }}
             actions={
               <ActionPanel>
-                <Action title="Finish Walkthrough" icon={Icon.Check} onAction={handleFinish} />
+                <Action title={t("walkthrough.actions.finish")} icon={Icon.Check} onAction={handleFinish} />
               </ActionPanel>
             }
           />

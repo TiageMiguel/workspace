@@ -5,14 +5,15 @@ import Walkthrough from "./components/Walkthrough";
 import path from "path";
 
 import { useWorkspace } from "./hooks/useWorkspace";
+import { useI18n } from "./hooks/useI18n";
 import { Project } from "./types";
 
 export default function Command() {
   const {
-    folders: parentFolders,
+    workspaces: parentWorkspaces,
     pinnedProjects,
     defaultApp,
-    folderApps,
+    workspaceApps,
     projectGitStatus,
     isLoading,
     loadData,
@@ -21,33 +22,36 @@ export default function Command() {
     setWalkthroughCompleted,
     togglePinProject,
   } = useWorkspace();
+  const { t } = useI18n();
 
   const [searchText, setSearchText] = useState("");
 
-  const filteredFolders = parentFolders.map((folder) => ({
-    name: path.basename(folder),
-    path: folder,
-    projects: getSubdirectories(folder).filter((p) => p.name.toLowerCase().includes(searchText.toLowerCase())),
+  const filteredWorkspaces = parentWorkspaces.map((workspace) => ({
+    name: path.basename(workspace),
+    path: workspace,
+    projects: getSubdirectories(workspace).filter((project) =>
+      project.name.toLowerCase().includes(searchText.toLowerCase()),
+    ),
   }));
 
-  const allProjects = filteredFolders.flatMap((f) => f.projects);
-  const pinnedList = allProjects.filter((p) => pinnedProjects.includes(p.fullPath));
+  const allProjects = filteredWorkspaces.flatMap((workspace) => workspace.projects);
+  const pinnedList = allProjects.filter((project) => pinnedProjects.includes(project.fullPath));
 
   if (!isLoading && !walkthroughCompleted) {
     return (
       <Walkthrough
         onComplete={() => setWalkthroughCompleted(true)}
-        folders={parentFolders}
+        workspaces={parentWorkspaces}
         defaultApp={defaultApp}
         loadData={loadData}
       />
     );
   }
 
-  const ProjectItem = ({ project, folderPath }: { project: Project; folderPath: string }) => {
+  const ProjectItem = ({ project, workspacePath }: { project: Project; workspacePath: string }) => {
     const gitStatus = projectGitStatus[project.fullPath];
-    const folderApp = folderApps[folderPath];
-    const appToUse = folderApp || defaultApp;
+    const workspaceApp = workspaceApps[workspacePath];
+    const appToUse = workspaceApp || defaultApp;
     const isPinned = pinnedProjects.includes(project.fullPath);
 
     return (
@@ -74,34 +78,34 @@ export default function Command() {
           <ActionPanel>
             <ActionPanel.Section>
               <Action.Open
-                title={`Open in ${appToUse?.name || "Default App"}`}
+                title={t("workspace.actions.openIn", { app: appToUse?.name || t("settings.general.defaultApp.label") })}
                 target={project.fullPath}
                 application={appToUse?.bundleId}
               />
               <Action
-                title={isPinned ? "Unpin Project" : "Pin Project"}
+                title={isPinned ? t("workspace.actions.unpin") : t("workspace.actions.pin")}
                 icon={isPinned ? Icon.PinDisabled : Icon.Pin}
                 shortcut={{ modifiers: ["cmd"], key: "p" }}
                 onAction={() => togglePinProject(project.fullPath)}
               />
             </ActionPanel.Section>
             <ActionPanel.Section>
-              <Action.ShowInFinder path={project.fullPath} />
-              <Action.OpenWith path={project.fullPath} />
+              <Action.ShowInFinder title={t("workspace.actions.showInFinder")} path={project.fullPath} />
+              <Action.OpenWith title={t("workspace.actions.openWith")} path={project.fullPath} />
             </ActionPanel.Section>
-            <ActionPanel.Section title="Copy">
-              <Action.CopyToClipboard title="Copy Project Name" content={project.name} />
+            <ActionPanel.Section title={t("workspace.sections.copy")}>
+              <Action.CopyToClipboard title={t("workspace.actions.copyName")} content={project.name} />
               <Action.CopyToClipboard
-                title="Copy Project Path"
+                title={t("workspace.actions.copyPath")}
                 content={project.fullPath}
                 shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
               />
             </ActionPanel.Section>
             <ActionPanel.Section>
               <Action.Push
-                title="Settings"
+                title={t("settings.title")}
                 icon={Icon.Gear}
-                target={<Settings onFoldersChanged={loadData} />}
+                target={<Settings onWorkspacesChanged={loadData} />}
                 shortcut={{ modifiers: ["cmd", "shift"], key: "," }}
               />
             </ActionPanel.Section>
@@ -112,30 +116,35 @@ export default function Command() {
   };
 
   return (
-    <List isLoading={isLoading} searchBarPlaceholder="Search projects..." onSearchTextChange={setSearchText} throttle>
+    <List
+      isLoading={isLoading}
+      searchBarPlaceholder={t("selectEditor.search")}
+      onSearchTextChange={setSearchText}
+      throttle
+    >
       {pinnedList.length > 0 && (
-        <List.Section title="Pinned">
+        <List.Section title={t("workspace.sections.pinned")}>
           {pinnedList.map((project) => (
-            <ProjectItem key={`pinned-${project.fullPath}`} project={project} folderPath={project.parentFolder} />
+            <ProjectItem key={`pinned-${project.fullPath}`} project={project} workspacePath={project.parentFolder} />
           ))}
         </List.Section>
       )}
 
-      {filteredFolders.map((folder) => (
-        <List.Section key={folder.path} title={folder.name} subtitle={folder.path}>
-          {folder.projects.map((project) => (
-            <ProjectItem key={project.fullPath} project={project} folderPath={folder.path} />
+      {filteredWorkspaces.map((workspace) => (
+        <List.Section key={workspace.path} title={workspace.name} subtitle={workspace.path}>
+          {workspace.projects.map((project) => (
+            <ProjectItem key={project.fullPath} project={project} workspacePath={workspace.path} />
           ))}
         </List.Section>
       ))}
 
-      {parentFolders.length === 0 && (
+      {parentWorkspaces.length === 0 && (
         <List.EmptyView
-          title="No Project Folders"
-          description="Add a folder in settings to see your projects."
+          title={t("workspace.empty.title")}
+          description={t("workspace.empty.description")}
           actions={
             <ActionPanel>
-              <Action.Push title="Open Settings" target={<Settings onFoldersChanged={loadData} />} />
+              <Action.Push title={t("workspace.empty.action")} target={<Settings onWorkspacesChanged={loadData} />} />
             </ActionPanel>
           }
         />

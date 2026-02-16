@@ -1,29 +1,43 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "projects",
-  "title": "Workspace Projects",
-  "description": "This extension enables you to have listed all your projects, and open in your favourited code editor",
+  "name": "workspace",
+  "title": "Workspace",
+  "description": "Manage and access your workspace projects directly from Raycast. Boost your focus with quick project opening, git status tracking, and customizable application overrides.",
   "icon": "extension-icon.png",
   "author": "tiagemiguel",
+  "version": "1.0.0",
+  "license": "MIT",
   "platforms": [
-    "macOS",
-    "Windows"
+    "macOS"
   ],
   "categories": [
+    "Productivity",
+    "Design Tools",
     "Developer Tools"
   ],
-  "license": "MIT",
+  "keywords": [
+    "workspace",
+    "projects",
+    "folders",
+    "quick access"
+  ],
   "commands": [
     {
-      "name": "projects",
-      "title": "Workspace Projects",
-      "description": "List and open your projects",
+      "name": "workspace",
+      "title": "Workspace",
+      "description": "Quickly open your workspace projects",
       "mode": "view"
     },
     {
-      "name": "add-folder",
-      "title": "Add Workspace Folder",
-      "description": "Add a parent folder that contains your workspace projects",
+      "name": "manage-workspaces",
+      "title": "Manage Your Workspaces",
+      "description": "View, reorganize, add and remove workspaces",
+      "mode": "view"
+    },
+    {
+      "name": "settings",
+      "title": "Workspace Settings",
+      "description": "Manage workspaces, default app and apps per workspace",
       "mode": "view"
     }
   ],
