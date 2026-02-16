@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/extension-icon.png" width="200" height="200" />
+  <img src="./.github/assets/icon.png" width="200" height="200" />
 </p>
 
 # Workspace
@@ -30,11 +30,11 @@ Workspace is a Raycast extension that streamlines your workflow by providing a c
 
 ## Screenshots
 
-![Main project list with pinned items and Git status](./metadata/workspace-2.png)
+![Main project list with pinned items and Git status](./.github/assets/screenshot-1.png)
 
 > _The main Workspace command showing pinned projects, Git status badges, and quick search._
 
-![Manage Workspaces view](./metadata/workspace-4.png)
+![Manage Workspaces view](./.github/assets/screenshot-2.png)
 
 > _Adding, removing, and reordering workspace folders._
 > _Example of per-workspace application override in action._
