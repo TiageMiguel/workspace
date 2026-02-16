@@ -28,7 +28,11 @@ export default function SelectEditor({ onSelect, onReset }: SelectEditorProps) {
   };
 
   return (
-    <List isLoading={isLoading} searchBarPlaceholder={t("selectEditor.search")}>
+    <List
+      isLoading={isLoading}
+      searchBarPlaceholder={t("selectEditor.search")}
+      navigationTitle={t("selectEditor.title")}
+    >
       {onReset && (
         <List.Item
           title={t("selectEditor.default.title")}

@@ -38,6 +38,7 @@
     }
   },
   "workspace": {
+    "search": "Buscar proyectos...",
     "empty": {
       "title": "Sin Workspaces",
       "description": "Añade un workspace en la configuración para ver tus proyectos.",

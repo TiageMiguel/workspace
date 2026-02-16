@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.1] - 2026-02-16
+
+### Fixed
+
+- Resolved conflict with Raycast reserved shortcut `cmd + p` (changed to `cmd + shift + p` for pinning).
+- Prevented flickering "No Workspaces" view during initial loading.
+
+### Improved
+
+- Added navigation titles to nested screens for better user context.
+- Localized search bar placeholders for projects.
+
 ## [1.0.0] - 2026-02-16
 
 ### Added

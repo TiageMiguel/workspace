@@ -38,6 +38,7 @@
     }
   },
   "workspace": {
+    "search": "Procurar projetos...",
     "empty": {
       "title": "Sem Workspaces",
       "description": "Adicione um workspace nas configurações para ver seus projetos.",

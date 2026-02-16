@@ -85,7 +85,7 @@ export default function Command() {
               <Action
                 title={isPinned ? t("workspace.actions.unpin") : t("workspace.actions.pin")}
                 icon={isPinned ? Icon.PinDisabled : Icon.Pin}
-                shortcut={{ modifiers: ["cmd"], key: "p" }}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                 onAction={() => togglePinProject(project.fullPath)}
               />
             </ActionPanel.Section>
@@ -118,7 +118,7 @@ export default function Command() {
   return (
     <List
       isLoading={isLoading}
-      searchBarPlaceholder={t("selectEditor.search")}
+      searchBarPlaceholder={t("workspace.search")}
       onSearchTextChange={setSearchText}
       throttle
     >
@@ -138,7 +138,7 @@ export default function Command() {
         </List.Section>
       ))}
 
-      {parentWorkspaces.length === 0 && (
+      {parentWorkspaces.length === 0 && !isLoading && (
         <List.EmptyView
           title={t("workspace.empty.title")}
           description={t("workspace.empty.description")}

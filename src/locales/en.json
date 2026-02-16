@@ -38,6 +38,7 @@
     }
   },
   "workspace": {
+    "search": "Search for projects...",
     "empty": {
       "title": "No Workspaces",
       "description": "Add a workspace in settings to see your projects.",

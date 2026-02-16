@@ -1,7 +1,10 @@
+<p align="center">
+  <img src="./assets/extension-icon.png" width="200" height="200" />
+</p>
+
 # Workspace
 
-[![Raycast Store](https://img.shields.io/badge/Raycast-Store-blue?style=flat-square)](https://www.raycast.com/)  
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![Raycast Store](https://img.shields.io/badge/Raycast-Store-blue?style=flat-square)](https://www.raycast.com/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 Manage and access all your development projects with ease.
 
@@ -27,19 +30,14 @@ Workspace is a Raycast extension that streamlines your workflow by providing a c
 
 ## Screenshots
 
-![Main project list with pinned items and Git status](assets/main-view.png)
+![Main project list with pinned items and Git status](./metadata/workspace-2.png)
 
 > _The main Workspace command showing pinned projects, Git status badges, and quick search._
 
-![Manage Workspaces view](assets/manage-workspaces.png)
+![Manage Workspaces view](./metadata/workspace-4.png)
 
 > _Adding, removing, and reordering workspace folders._
-
-![Opening a project with custom app override](assets/open-project.png)
-
 > _Example of per-workspace application override in action._
-
-_(Replace the placeholder paths above with your actual screenshots in an `assets/` folder.)_
 
 ## Getting Started
 
