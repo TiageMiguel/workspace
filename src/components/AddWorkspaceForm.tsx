@@ -1,5 +1,5 @@
-import { Form, ActionPanel, Action, showToast, Toast, popToRoot, useNavigation } from "@raycast/api";
-import { useForm, FormValidation } from "@raycast/utils";
+import { Action, ActionPanel, Form, popToRoot, showToast, Toast, useNavigation } from "@raycast/api";
+import { FormValidation, useForm } from "@raycast/utils";
 import path from "path";
 
 import { getStoredWorkspaces, saveStoredWorkspaces } from "@/utils/storage";
@@ -22,9 +22,9 @@ export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
 
       if (workspaces.includes(workspacePath)) {
         await showToast({
+          message: path.basename(workspacePath),
           style: Toast.Style.Failure,
           title: "Workspace already added",
-          message: path.basename(workspacePath),
         });
 
         return;
@@ -34,9 +34,9 @@ export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
 
       await saveStoredWorkspaces(workspaces);
       await showToast({
+        message: path.basename(workspacePath),
         style: Toast.Style.Success,
         title: "Workspace Added",
-        message: path.basename(workspacePath),
       });
 
       if (onDone) {
@@ -56,22 +56,22 @@ export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
 
   return (
     <Form
-      navigationTitle="Add Workspace"
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Add Workspace" onSubmit={handleSubmit} />
+          <Action.SubmitForm onSubmit={handleSubmit} title="Add Workspace" />
         </ActionPanel>
       }
+      navigationTitle="Add Workspace"
     >
       <Form.Description
-        title="Add Workspace"
         text="Select a parent folder that contains your workspace projects. You can manage your workspaces later in the extension settings."
+        title="Add Workspace"
       />
       <Form.FilePicker
-        title="Workspace Path"
         allowMultipleSelection={false}
         canChooseDirectories
         canChooseFiles={false}
+        title="Workspace Path"
         {...itemProps.workspace}
       />
     </Form>

@@ -26,7 +26,7 @@ export async function getGitStatus(repoPath: string): Promise<GitStatus | null> 
         encoding: "utf8",
       });
       const [ahead, behind] = counts.trim().split(/\s+/).map(Number);
-      
+
       return {
         branch: branchName,
         pull: behind || 0,

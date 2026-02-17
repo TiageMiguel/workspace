@@ -1,6 +1,6 @@
-import { ActionPanel, Action, List } from "@raycast/api";
+import { Action, ActionPanel, List } from "@raycast/api";
 import path from "path";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import Onboarding from "@/components/Onboarding";
 import ProjectItem from "@/components/ProjectItem";
@@ -10,17 +10,17 @@ import { Project } from "@/types";
 
 export default function Command() {
   const {
-    workspaces: parentWorkspaces,
-    projects,
-    pinnedProjects,
     defaultApp,
-    terminalApp,
-    workspaceApps,
     isLoading,
     loadData,
     onboardingCompleted,
+    pinnedProjects,
+    projects,
     setOnboardingCompleted,
+    terminalApp,
     togglePinProject,
+    workspaceApps,
+    workspaces: parentWorkspaces,
   } = useWorkspace();
 
   const [searchText, setSearchText] = useState("");
@@ -58,10 +58,10 @@ export default function Command() {
   if (!isLoading && !onboardingCompleted) {
     return (
       <Onboarding
-        onComplete={() => setOnboardingCompleted(true)}
-        workspaces={parentWorkspaces}
         defaultApp={defaultApp}
         loadData={loadData}
+        onComplete={() => setOnboardingCompleted(true)}
+        workspaces={parentWorkspaces}
       />
     );
   }
@@ -69,24 +69,24 @@ export default function Command() {
   return (
     <List
       isLoading={isLoading}
-      searchBarPlaceholder="Search for projects..."
       onSearchTextChange={setSearchText}
       onSelectionChange={() => {}}
+      searchBarPlaceholder="Search for projects..."
       throttle
     >
       {pinnedList.length > 0 && (
         <List.Section title="Pinned">
           {pinnedList.map((project) => (
             <ProjectItem
-              key={`pinned-${project.fullPath}`}
-              project={project}
-              workspacePath={project.parentFolder}
-              isPinned={true}
               defaultApp={defaultApp}
+              isPinned={true}
+              key={`pinned-${project.fullPath}`}
+              onRefresh={loadData}
+              onTogglePin={togglePinProject}
+              project={project}
               terminalApp={terminalApp}
               workspaceApps={workspaceApps}
-              onTogglePin={togglePinProject}
-              onRefresh={loadData}
+              workspacePath={project.parentFolder}
             />
           ))}
         </List.Section>
@@ -100,18 +100,18 @@ export default function Command() {
         }
 
         return (
-          <List.Section key={workspace} title={path.basename(workspace)} subtitle={workspace}>
+          <List.Section key={workspace} subtitle={workspace} title={path.basename(workspace)}>
             {workspaceProjects.map((project: Project) => (
               <ProjectItem
-                key={project.fullPath}
-                project={project}
-                workspacePath={workspace}
-                isPinned={pinnedProjects.includes(project.fullPath)}
                 defaultApp={defaultApp}
+                isPinned={pinnedProjects.includes(project.fullPath)}
+                key={project.fullPath}
+                onRefresh={loadData}
+                onTogglePin={togglePinProject}
+                project={project}
                 terminalApp={terminalApp}
                 workspaceApps={workspaceApps}
-                onTogglePin={togglePinProject}
-                onRefresh={loadData}
+                workspacePath={workspace}
               />
             ))}
           </List.Section>
@@ -120,13 +120,13 @@ export default function Command() {
 
       {parentWorkspaces.length === 0 && !isLoading && (
         <List.EmptyView
-          title="No Workspaces"
-          description="Add a workspace in settings to see your projects."
           actions={
             <ActionPanel>
-              <Action.Push title="Open Settings" target={<Settings onWorkspacesChanged={loadData} />} />
+              <Action.Push target={<Settings onWorkspacesChanged={loadData} />} title="Open Settings" />
             </ActionPanel>
           }
+          description="Add a workspace in settings to see your projects."
+          title="No Workspaces"
         />
       )}
     </List>

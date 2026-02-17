@@ -1,40 +1,40 @@
-import { useCachedState, useCachedPromise } from "@raycast/utils";
+import { useCachedPromise, useCachedState } from "@raycast/utils";
 import { readdirSync } from "fs";
 import path from "path";
 import { useCallback, useEffect, useState } from "react";
 
-import { Project, App } from "@/types";
+import { App, Project } from "@/types";
 import { getGitStatus } from "@/utils/git";
 import {
-  getStoredWorkspaces,
   getStoredApp,
-  getWorkspaceApps,
   getStoredOnboardingCompleted,
-  setStoredOnboardingCompleted,
-  saveStoredApp,
-  saveStoredWorkspaces,
   getStoredPinnedProjects,
-  saveStoredPinnedProjects,
   getStoredTerminalApp,
+  getStoredWorkspaces,
+  getWorkspaceApps,
+  saveStoredApp,
+  saveStoredPinnedProjects,
   saveStoredTerminalApp,
+  saveStoredWorkspaces,
+  setStoredOnboardingCompleted,
 } from "@/utils/storage";
 
 export interface UseWorkspaceReturn {
-  workspaces: string[];
-  projects: Project[] | undefined;
-  pinnedProjects: string[];
   defaultApp: App | null;
-  terminalApp: App | null;
-  workspaceApps: Record<string, App>;
+  getSubdirectories: (parentPath: string) => Project[];
   isLoading: boolean;
   loadData: () => Promise<void>;
-  getSubdirectories: (parentPath: string) => Project[];
   onboardingCompleted: boolean;
+  pinnedProjects: string[];
+  projects: Project[] | undefined;
   setOnboardingCompleted: (completed: boolean) => Promise<void>;
+  terminalApp: App | null;
   togglePinProject: (projectPath: string) => Promise<void>;
-  updateWorkspaces: (newWorkspaces: string[]) => Promise<void>;
   updateDefaultApp: (app: App | null) => Promise<void>;
   updateTerminalApp: (app: App | null) => Promise<void>;
+  updateWorkspaces: (newWorkspaces: string[]) => Promise<void>;
+  workspaceApps: Record<string, App>;
+  workspaces: string[];
 }
 
 export function useWorkspace(): UseWorkspaceReturn {
@@ -49,13 +49,13 @@ export function useWorkspace(): UseWorkspaceReturn {
   const getSubdirectories = useCallback((parentPath: string): Project[] => {
     try {
       const entries = readdirSync(parentPath, { withFileTypes: true });
-      
+
       return entries
         .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((entry) => ({
-          name: entry.name,
           fullPath: path.join(parentPath, entry.name),
+          name: entry.name,
           parentFolder: parentPath,
         }));
     } catch {
@@ -149,20 +149,20 @@ export function useWorkspace(): UseWorkspaceReturn {
   };
 
   return {
-    workspaces,
-    projects,
-    pinnedProjects,
     defaultApp,
-    terminalApp,
-    workspaceApps,
+    getSubdirectories,
     isLoading: isLoading || isProjectsLoading,
     loadData,
-    getSubdirectories,
     onboardingCompleted,
+    pinnedProjects,
+    projects,
     setOnboardingCompleted: setOnboardingCompletedState,
+    terminalApp,
     togglePinProject,
-    updateWorkspaces,
     updateDefaultApp,
     updateTerminalApp,
+    updateWorkspaces,
+    workspaceApps,
+    workspaces,
   };
 }
