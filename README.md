@@ -6,12 +6,12 @@
 
 [![Raycast Store](https://img.shields.io/badge/Raycast-Store-blue?style=flat-square)](https://www.raycast.com/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-Manage and access all your development projects with ease.
+Manage and access all your projects with ease.
 
-Workspace is a Raycast extension that streamlines your workflow by providing a central hub for all your projects and folders across multiple parent directories.
+Workspace is a Raycast extension that streamlines your workflow by providing a central hub for all your projects and folders across multiple directories.
 
 > [!TIP]
-> **Not just for developers!** While it's perfect for code, Workspace can manage any project or folder structure. You can configure any application to open specific workspaces—use it for design assets, writing projects, or even administrative folders.
+> **Not just for developers!** While it's perfect for code, Workspace can manage any project or folder structure. You can configure any application to open specific workspaces, use it for design assets, writing projects, or even administrative folders.
 
 ## Installation
 
