@@ -1,8 +1,8 @@
 import { Action, ActionPanel, Icon, List, useNavigation, showToast, Toast } from "@raycast/api";
-import { usePromise } from "@raycast/utils";
 import { getApplications, type Application } from "@raycast/api";
+import { usePromise } from "@raycast/utils";
 
-import { saveStoredTerminalApp } from "../utils/storage";
+import { saveStoredTerminalApp } from "@/utils/storage";
 
 export default function TerminalSettings() {
   const { pop } = useNavigation();
@@ -15,6 +15,7 @@ export default function TerminalSettings() {
       title: "App Updated",
       message: app.name,
     });
+
     pop();
   };
 
@@ -25,6 +26,7 @@ export default function TerminalSettings() {
       title: "App Updated",
       message: "Default",
     });
+
     pop();
   };
 

@@ -1,12 +1,12 @@
 import { ActionPanel, Action, List } from "@raycast/api";
-import { useState, useMemo } from "react";
-import Settings from "./components/Settings";
-import Walkthrough from "./components/Walkthrough";
-import ProjectItem from "./components/ProjectItem";
 import path from "path";
+import { useState, useMemo } from "react";
 
-import { useWorkspace } from "./hooks/useWorkspace";
-import { Project } from "./types";
+import Onboarding from "@/components/Onboarding";
+import ProjectItem from "@/components/ProjectItem";
+import Settings from "@/components/Settings";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { Project } from "@/types";
 
 export default function Command() {
   const {
@@ -18,8 +18,8 @@ export default function Command() {
     workspaceApps,
     isLoading,
     loadData,
-    walkthroughCompleted,
-    setWalkthroughCompleted,
+    onboardingCompleted,
+    setOnboardingCompleted,
     togglePinProject,
   } = useWorkspace();
 
@@ -29,8 +29,10 @@ export default function Command() {
     if (!projects) {
       return [];
     }
+
     return projects.filter((project) => {
       const searchLower = searchText.toLowerCase();
+
       return (
         project.name.toLowerCase().includes(searchLower) ||
         project.fullPath.toLowerCase().includes(searchLower) ||
@@ -41,9 +43,11 @@ export default function Command() {
 
   const projectsByWorkspace = useMemo(() => {
     const map: Record<string, Project[]> = {};
+
     parentWorkspaces.forEach((ws: string) => {
       map[ws] = filteredProjects.filter((p: Project) => p.parentFolder === ws);
     });
+
     return map;
   }, [parentWorkspaces, filteredProjects]);
 
@@ -51,10 +55,10 @@ export default function Command() {
     return (projects || []).filter((project: Project) => pinnedProjects.includes(project.fullPath));
   }, [projects, pinnedProjects]);
 
-  if (!isLoading && !walkthroughCompleted) {
+  if (!isLoading && !onboardingCompleted) {
     return (
-      <Walkthrough
-        onComplete={() => setWalkthroughCompleted(true)}
+      <Onboarding
+        onComplete={() => setOnboardingCompleted(true)}
         workspaces={parentWorkspaces}
         defaultApp={defaultApp}
         loadData={loadData}
@@ -90,6 +94,7 @@ export default function Command() {
 
       {parentWorkspaces.map((workspace) => {
         const workspaceProjects = projectsByWorkspace[workspace] || [];
+
         if (workspaceProjects.length === 0 && searchText) {
           return null;
         }

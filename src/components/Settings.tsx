@@ -1,12 +1,12 @@
 import { Action, ActionPanel, Icon, List, showToast, Toast, confirmAlert, Alert, Color } from "@raycast/api";
-import { useState, useEffect, useCallback } from "react";
-import path from "path";
-import AddWorkspaceForm from "./AddWorkspaceForm";
-import SelectEditor from "./SelectEditor";
-import TerminalSettings from "./TerminalSettings";
-
 import { type Application } from "@raycast/api";
+import path from "path";
+import { useState, useEffect, useCallback } from "react";
 
+import AddWorkspaceForm from "@/components/AddWorkspaceForm";
+import SelectEditor from "@/components/SelectEditor";
+import TerminalSettings from "@/components/TerminalSettings";
+import { App } from "@/types";
 import {
   getStoredWorkspaces,
   saveStoredWorkspaces,
@@ -14,8 +14,7 @@ import {
   getStoredTerminalApp,
   getWorkspaceApps,
   saveWorkspaceApps,
-} from "../utils/storage";
-import { App } from "../types";
+} from "@/utils/storage";
 
 interface SettingsProps {
   onWorkspacesChanged?: () => Promise<void>;
@@ -35,6 +34,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       getWorkspaceApps(),
       getStoredTerminalApp(),
     ]);
+
     setWorkspaces(storedWorkspaces);
     setDefaultApp(storedDefaultApp);
     setWorkspaceApps(storedWorkspaceApps);
@@ -54,17 +54,21 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       })
     ) {
       const newWorkspaces = workspaces.filter((workspacePathItem) => workspacePathItem !== workspacePath);
+
       await saveStoredWorkspaces(newWorkspaces);
 
       const newWorkspaceApps = { ...workspaceApps };
       delete newWorkspaceApps[workspacePath];
+
       await saveWorkspaceApps(newWorkspaceApps);
 
       setWorkspaces(newWorkspaces);
       setWorkspaceApps(newWorkspaceApps);
+
       if (onWorkspacesChanged) {
         await onWorkspacesChanged();
       }
+
       await showToast({ style: Toast.Style.Success, title: "Workspace Removed" });
     }
   }
@@ -74,8 +78,11 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       ...workspaceApps,
       [workspacePath]: { name: app.name, bundleId: app.bundleId || "" },
     };
+
     await saveWorkspaceApps(newWorkspaceApps);
+
     setWorkspaceApps(newWorkspaceApps);
+
     await showToast({
       style: Toast.Style.Success,
       title: "App Updated",
@@ -86,8 +93,11 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
   async function resetWorkspaceApp(workspacePath: string) {
     const newWorkspaceApps = { ...workspaceApps };
     delete newWorkspaceApps[workspacePath];
+
     await saveWorkspaceApps(newWorkspaceApps);
+
     setWorkspaceApps(newWorkspaceApps);
+
     await showToast({ style: Toast.Style.Success, title: "Application Reset" });
   }
 
@@ -99,13 +109,17 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
 
     const newWorkspaces = [...workspaces];
     const [moved] = newWorkspaces.splice(index, 1);
+
     newWorkspaces.splice(newIndex, 0, moved);
 
     await saveStoredWorkspaces(newWorkspaces);
+
     setWorkspaces(newWorkspaces);
+
     if (onWorkspacesChanged) {
       await onWorkspacesChanged();
     }
+
     await showToast({ style: Toast.Style.Success, title: "Workspace Moved" });
   }
 
@@ -235,6 +249,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
                 target={<AddWorkspaceForm />}
                 onPop={() => {
                   loadSettings();
+
                   if (onWorkspacesChanged) {
                     onWorkspacesChanged();
                   }

@@ -1,20 +1,23 @@
 import { LocalStorage } from "@raycast/api";
+
+import { App } from "@/types";
 import {
   STORAGE_KEY_WORKSPACES,
   STORAGE_KEY_APP,
   STORAGE_KEY_WORKSPACE_APPS,
-  STORAGE_KEY_WALKTHROUGH_COMPLETED,
+  STORAGE_KEY_ONBOARDING_COMPLETED,
   STORAGE_KEY_PINNED_PROJECTS,
   STORAGE_KEY_TERMINAL_APP,
-} from "./constants";
-import { App } from "../types";
+} from "@/utils/constants";
 
 async function getStoredItem<T>(key: string, defaultValue: T): Promise<T> {
   const raw = await LocalStorage.getItem<string>(key);
+
   try {
     return raw ? (JSON.parse(raw) as T) : defaultValue;
   } catch (error) {
     console.error(`Error parsing stored item for key "${key}":`, error);
+    
     return defaultValue;
   }
 }
@@ -51,13 +54,14 @@ export async function saveWorkspaceApps(workspaceApps: Record<string, App>): Pro
   await LocalStorage.setItem(STORAGE_KEY_WORKSPACE_APPS, JSON.stringify(workspaceApps));
 }
 
-export async function getStoredWalkthroughCompleted(): Promise<boolean> {
-  const raw = await LocalStorage.getItem<boolean>(STORAGE_KEY_WALKTHROUGH_COMPLETED);
+export async function getStoredOnboardingCompleted(): Promise<boolean> {
+  const raw = await LocalStorage.getItem<boolean>(STORAGE_KEY_ONBOARDING_COMPLETED);
+
   return raw ?? false;
 }
 
-export async function setStoredWalkthroughCompleted(completed: boolean): Promise<void> {
-  await LocalStorage.setItem(STORAGE_KEY_WALKTHROUGH_COMPLETED, completed);
+export async function setStoredOnboardingCompleted(completed: boolean): Promise<void> {
+  await LocalStorage.setItem(STORAGE_KEY_ONBOARDING_COMPLETED, completed);
 }
 
 export async function getStoredTerminalApp(): Promise<App | null> {

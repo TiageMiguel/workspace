@@ -1,7 +1,8 @@
 import { Form, ActionPanel, Action, showToast, Toast, popToRoot, useNavigation } from "@raycast/api";
 import { useForm, FormValidation } from "@raycast/utils";
 import path from "path";
-import { getStoredWorkspaces, saveStoredWorkspaces } from "../utils/storage";
+
+import { getStoredWorkspaces, saveStoredWorkspaces } from "@/utils/storage";
 
 interface AddWorkspaceFormProps {
   onDone?: () => void;
@@ -30,8 +31,8 @@ export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
       }
 
       workspaces.push(workspacePath);
-      await saveStoredWorkspaces(workspaces);
 
+      await saveStoredWorkspaces(workspaces);
       await showToast({
         style: Toast.Style.Success,
         title: "Workspace Added",

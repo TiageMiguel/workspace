@@ -1,17 +1,18 @@
 import { ActionPanel, Action, Icon, List, Color } from "@raycast/api";
 import { getProgressIcon } from "@raycast/utils";
-import AddWorkspaceForm from "./AddWorkspaceForm";
-import SelectEditor from "./SelectEditor";
-import { App } from "../types";
 
-interface WalkthroughProps {
+import AddWorkspaceForm from "@/components/AddWorkspaceForm";
+import SelectEditor from "@/components/SelectEditor";
+import { App } from "@/types";
+
+interface OnboardingProps {
   onComplete: () => void;
   workspaces: string[];
   defaultApp: App | null;
   loadData: () => Promise<void>;
 }
 
-export default function Walkthrough({ onComplete, workspaces, defaultApp, loadData }: WalkthroughProps) {
+export default function Onboarding({ onComplete, workspaces, defaultApp, loadData }: OnboardingProps) {
   const hasWorkspaces = workspaces.length > 0;
   const hasApp = !!defaultApp;
   const isReady = hasWorkspaces && hasApp;
@@ -39,7 +40,7 @@ export default function Walkthrough({ onComplete, workspaces, defaultApp, loadDa
           icon={getProgressIcon(hasApp ? 1 : 0, Color.Green)}
           actions={
             <ActionPanel>
-              <Action.Push title="Select Editor" icon={Icon.AppWindow} target={<SelectEditor />} onPop={loadData} />
+              <Action.Push title="Select App" icon={Icon.AppWindow} target={<SelectEditor />} onPop={loadData} />
             </ActionPanel>
           }
         />
@@ -50,7 +51,7 @@ export default function Walkthrough({ onComplete, workspaces, defaultApp, loadDa
             icon={{ source: Icon.CheckCircle, tintColor: Color.Green }}
             actions={
               <ActionPanel>
-                <Action title="Finish Walkthrough" icon={Icon.Check} onAction={handleFinish} />
+                <Action title="Finish Onboarding" icon={Icon.Check} onAction={handleFinish} />
               </ActionPanel>
             }
           />

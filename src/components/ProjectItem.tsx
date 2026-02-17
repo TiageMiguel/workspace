@@ -1,8 +1,9 @@
 import { ActionPanel, Action, List, Icon, Color } from "@raycast/api";
-import { useMemo } from "react";
 import path from "path";
-import { Project, App } from "../types";
-import Settings from "./Settings";
+import { useMemo } from "react";
+
+import Settings from "@/components/Settings";
+import { Project, App } from "@/types";
 
 interface ProjectItemProps {
   project: Project;
@@ -33,9 +34,11 @@ export default function ProjectItem({
     if (!gitStatus) {
       return undefined;
     }
+
     if (gitStatus.pull || gitStatus.push) {
       return Color.Orange;
     }
+
     return Color.Green;
   }, [gitStatus]);
 
@@ -65,6 +68,7 @@ export default function ProjectItem({
             <Action.Open
               title={`Open in ${appToUse?.name || "Open in default app"}`}
               target={project.fullPath}
+              icon={Icon.AppWindow}
               application={appToUse?.bundleId}
             />
             <Action.Open
