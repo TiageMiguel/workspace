@@ -74,7 +74,7 @@ export default function Command() {
       searchBarPlaceholder="Search for projects..."
       throttle
     >
-      {pinnedList.length > 0 && (
+      {pinnedList.length > 0 && !searchText && (
         <List.Section title="Pinned">
           {pinnedList.map((project) => (
             <ProjectItem
