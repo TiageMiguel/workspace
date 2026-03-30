@@ -16,6 +16,7 @@ export default function Command() {
     onboardingCompleted,
     pinnedProjects,
     projects,
+    reorderPinnedProject,
     setOnboardingCompleted,
     terminalApp,
     togglePinProject,
@@ -56,8 +57,10 @@ export default function Command() {
   }, [parentWorkspaces, filteredProjects, pinnedSet, searchText]);
 
   const pinnedList = useMemo(() => {
-    return (projects || []).filter((project: Project) => pinnedSet.has(project.fullPath));
-  }, [projects, pinnedSet]);
+    const projectsMap = new Map((projects || []).map((p) => [p.fullPath, p]));
+
+    return pinnedProjects.map((path) => projectsMap.get(path)).filter((p): p is Project => !!p);
+  }, [projects, pinnedProjects]);
 
   if (!isLoading && !onboardingCompleted) {
     return (
@@ -85,6 +88,7 @@ export default function Command() {
               isPinned={true}
               key={`pinned-${project.fullPath}`}
               onRefresh={loadData}
+              onReorderPin={reorderPinnedProject}
               onTogglePin={togglePinProject}
               project={project}
               terminalApp={terminalApp}
@@ -110,6 +114,7 @@ export default function Command() {
                 isPinned={pinnedSet.has(project.fullPath)}
                 key={project.fullPath}
                 onRefresh={loadData}
+                onReorderPin={reorderPinnedProject}
                 onTogglePin={togglePinProject}
                 project={project}
                 terminalApp={terminalApp}

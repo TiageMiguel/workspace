@@ -1,7 +1,7 @@
 import { useCachedPromise, useCachedState } from "@raycast/utils";
 import { readdir } from "fs/promises";
 import path from "path";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 import { App, Project } from "@/types";
 import {
@@ -14,14 +14,7 @@ import {
 } from "@/utils/constants";
 import { getGitStatus } from "@/utils/git";
 import {
-  getStoredApp,
-  getStoredOnboardingCompleted,
-  getStoredPinnedProjects,
-  getStoredTerminalApp,
-  getStoredWorkspaces,
-  getWorkspaceApps,
   saveStoredApp,
-  saveStoredPinnedProjects,
   saveStoredTerminalApp,
   saveStoredWorkspaces,
   setStoredOnboardingCompleted,
@@ -34,6 +27,7 @@ export interface UseWorkspaceReturn {
   onboardingCompleted: boolean;
   pinnedProjects: string[];
   projects: Project[] | undefined;
+  reorderPinnedProject: (projectPath: string, direction: "down" | "up") => Promise<void>;
   setOnboardingCompleted: (completed: boolean) => Promise<void>;
   terminalApp: App | null;
   togglePinProject: (projectPath: string) => Promise<void>;
@@ -49,12 +43,11 @@ export function useWorkspace(): UseWorkspaceReturn {
   const [pinnedProjects, setPinnedProjects] = useCachedState<string[]>(STORAGE_KEY_PINNED_PROJECTS, []);
   const [defaultApp, setDefaultApp] = useCachedState<App | null>(STORAGE_KEY_APP, null);
   const [terminalApp, setTerminalApp] = useCachedState<App | null>(STORAGE_KEY_TERMINAL_APP, null);
-  const [workspaceApps, setWorkspaceApps] = useCachedState<Record<string, App>>(STORAGE_KEY_WORKSPACE_APPS, {});
+  const [workspaceApps] = useCachedState<Record<string, App>>(STORAGE_KEY_WORKSPACE_APPS, {});
   const [onboardingCompleted, setOnboardingCompleted] = useCachedState<boolean>(
     STORAGE_KEY_ONBOARDING_COMPLETED,
     false,
   );
-  const [isLoading, setIsLoading] = useState(true);
 
   const { data: projects, isLoading: isProjectsLoading } = useCachedPromise(
     async (ws: string[]) => {
@@ -76,34 +69,8 @@ export function useWorkspace(): UseWorkspaceReturn {
   );
 
   const loadData = useCallback(async (): Promise<void> => {
-    const [
-      storedWorkspaces,
-      storedApp,
-      storedWorkspaceApps,
-      storedOnboardingCompleted,
-      storedPinnedProjects,
-      storedTerminalApp,
-    ] = await Promise.all([
-      getStoredWorkspaces(),
-      getStoredApp(),
-      getWorkspaceApps(),
-      getStoredOnboardingCompleted(),
-      getStoredPinnedProjects(),
-      getStoredTerminalApp(),
-    ]);
-
-    setWorkspaces(storedWorkspaces);
-    setDefaultApp(storedApp);
-    setWorkspaceApps(storedWorkspaceApps);
-    setOnboardingCompleted(storedOnboardingCompleted);
-    setPinnedProjects(storedPinnedProjects);
-    setTerminalApp(storedTerminalApp);
-    setIsLoading(false);
-  }, [setWorkspaces, setDefaultApp, setWorkspaceApps, setOnboardingCompleted, setPinnedProjects, setTerminalApp]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // No-op as useCachedState handles persistence automatically
+  }, []);
 
   const setOnboardingCompletedState = async (completed: boolean): Promise<void> => {
     await setStoredOnboardingCompleted(completed);
@@ -116,7 +83,21 @@ export function useWorkspace(): UseWorkspaceReturn {
       ? pinnedProjects.filter((p: string) => p !== projectPath)
       : [...pinnedProjects, projectPath];
 
-    await saveStoredPinnedProjects(newPinned);
+    setPinnedProjects(newPinned);
+  };
+
+  const reorderPinnedProject = async (projectPath: string, direction: "down" | "up"): Promise<void> => {
+    const index = pinnedProjects.indexOf(projectPath);
+    if (index === -1) return;
+
+    const newPinned = [...pinnedProjects];
+    if (direction === "up" && index > 0) {
+      [newPinned[index], newPinned[index - 1]] = [newPinned[index - 1], newPinned[index]];
+    } else if (direction === "down" && index < newPinned.length - 1) {
+      [newPinned[index], newPinned[index + 1]] = [newPinned[index + 1], newPinned[index]];
+    } else {
+      return;
+    }
 
     setPinnedProjects(newPinned);
   };
@@ -143,11 +124,12 @@ export function useWorkspace(): UseWorkspaceReturn {
 
   return {
     defaultApp,
-    isLoading: isLoading || isProjectsLoading,
+    isLoading: isProjectsLoading,
     loadData,
     onboardingCompleted,
     pinnedProjects,
     projects,
+    reorderPinnedProject,
     setOnboardingCompleted: setOnboardingCompletedState,
     terminalApp,
     togglePinProject,

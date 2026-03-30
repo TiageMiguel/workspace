@@ -9,6 +9,7 @@ interface ProjectItemProps {
   defaultApp: App | null;
   isPinned: boolean;
   onRefresh: () => Promise<void>;
+  onReorderPin: (fullPath: string, direction: "down" | "up") => Promise<void>;
   onTogglePin: (fullPath: string) => Promise<void>;
   project: Project;
   terminalApp: App | null;
@@ -20,6 +21,7 @@ export default function ProjectItem({
   defaultApp,
   isPinned,
   onRefresh,
+  onReorderPin,
   onTogglePin,
   project,
   terminalApp,
@@ -68,6 +70,22 @@ export default function ProjectItem({
               shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
               title={isPinned ? "Unpin Project" : "Pin Project"}
             />
+            {isPinned && (
+              <>
+                <Action
+                  icon={Icon.ArrowUp}
+                  onAction={() => onReorderPin(project.fullPath, "up")}
+                  shortcut={{ key: "arrowUp", modifiers: ["opt", "cmd"] }}
+                  title="Move Pinned Project Up"
+                />
+                <Action
+                  icon={Icon.ArrowDown}
+                  onAction={() => onReorderPin(project.fullPath, "down")}
+                  shortcut={{ key: "arrowDown", modifiers: ["opt", "cmd"] }}
+                  title="Move Pinned Project Down"
+                />
+              </>
+            )}
           </ActionPanel.Section>
           <ActionPanel.Section>
             <Action.ShowInFinder path={project.fullPath} title="Show in Finder" />
