@@ -2,7 +2,7 @@ import { Action, ActionPanel, Form, popToRoot, showToast, Toast, useNavigation }
 import { FormValidation, useForm } from "@raycast/utils";
 import path from "path";
 
-import { getStoredWorkspaces, saveStoredWorkspaces } from "@/utils/storage";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 interface AddWorkspaceFormProps {
   onDone?: () => void;
@@ -14,11 +14,11 @@ interface FormValues {
 
 export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
   const { pop } = useNavigation();
+  const { updateWorkspaces, workspaces } = useWorkspace();
 
   const { handleSubmit, itemProps } = useForm<FormValues>({
     async onSubmit(values) {
       const workspacePath = path.resolve(values.workspace[0]);
-      const workspaces = await getStoredWorkspaces();
 
       if (workspaces.includes(workspacePath)) {
         await showToast({
@@ -32,7 +32,7 @@ export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
 
       const newWorkspaces = [...workspaces, workspacePath];
 
-      await saveStoredWorkspaces(newWorkspaces);
+      await updateWorkspaces(newWorkspaces);
       await showToast({
         message: path.basename(workspacePath),
         style: Toast.Style.Success,

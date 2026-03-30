@@ -12,6 +12,7 @@ interface ProjectItemProps {
   onReorderPin: (fullPath: string, direction: "down" | "up") => Promise<void>;
   onTogglePin: (fullPath: string) => Promise<void>;
   project: Project;
+  showGitStatus: boolean;
   terminalApp: App | null;
   workspaceApps: Record<string, App>;
   workspacePath: string;
@@ -24,6 +25,7 @@ export default function ProjectItem({
   onReorderPin,
   onTogglePin,
   project,
+  showGitStatus,
   terminalApp,
   workspaceApps,
   workspacePath,
@@ -36,7 +38,7 @@ export default function ProjectItem({
   return (
     <List.Item
       accessories={[
-        ...(project.gitStatus
+        ...(project.gitStatus && showGitStatus
           ? [
               {
                 tag: {

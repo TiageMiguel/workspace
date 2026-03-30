@@ -1,21 +1,10 @@
 import { Action, ActionPanel, Alert, Color, confirmAlert, Icon, List, showToast, Toast } from "@raycast/api";
 import { type Application } from "@raycast/api";
 import path from "path";
-import { useCallback, useEffect, useState } from "react";
 
 import AddWorkspaceForm from "@/components/AddWorkspaceForm";
 import SelectEditor from "@/components/SelectEditor";
-import { App } from "@/types";
-import { isGitAvailable } from "@/utils/git";
-import {
-  getStoredApp,
-  getStoredTerminalApp,
-  getStoredWorkspaces,
-  getWorkspaceApps,
-  saveStoredTerminalApp,
-  saveStoredWorkspaces,
-  saveWorkspaceApps,
-} from "@/utils/storage";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 interface SettingsProps {
   onWorkspacesChanged?: () => Promise<void>;
@@ -23,32 +12,23 @@ interface SettingsProps {
 }
 
 export default function Settings({ onWorkspacesChanged, showGeneral = true }: SettingsProps) {
-  const [workspaces, setWorkspaces] = useState<string[]>([]);
-  const [defaultApp, setDefaultApp] = useState<App | null>(null);
-  const [terminalApp, setTerminalApp] = useState<App | null>(null);
-  const [workspaceApps, setWorkspaceApps] = useState<Record<string, App>>({});
-  const [gitAvailable, setGitAvailable] = useState<boolean | null>(null);
-
-  const loadSettings = useCallback(async () => {
-    const [storedWorkspaces, storedDefaultApp, storedWorkspaceApps, storedTerminalApp, gitInstalled] =
-      await Promise.all([
-        getStoredWorkspaces(),
-        getStoredApp(),
-        getWorkspaceApps(),
-        getStoredTerminalApp(),
-        isGitAvailable(),
-      ]);
-
-    setWorkspaces(storedWorkspaces);
-    setDefaultApp(storedDefaultApp);
-    setWorkspaceApps(storedWorkspaceApps);
-    setTerminalApp(storedTerminalApp);
-    setGitAvailable(gitInstalled);
-  }, []);
-
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+  const {
+    defaultApp,
+    fzfAvailable,
+    gitAvailable,
+    loadData,
+    showFzfStatus,
+    showGitStatus,
+    terminalApp,
+    updateDefaultApp,
+    updateShowFzfStatus,
+    updateShowGitStatus,
+    updateTerminalApp,
+    updateWorkspaceApps,
+    updateWorkspaces,
+    workspaceApps,
+    workspaces,
+  } = useWorkspace();
 
   async function removeWorkspace(workspacePath: string) {
     if (
@@ -61,15 +41,12 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       try {
         const newWorkspaces = workspaces.filter((item) => item !== workspacePath);
 
-        await saveStoredWorkspaces(newWorkspaces);
+        await updateWorkspaces(newWorkspaces);
 
         const newWorkspaceApps = { ...workspaceApps };
         delete newWorkspaceApps[workspacePath];
 
-        await saveWorkspaceApps(newWorkspaceApps);
-
-        setWorkspaces(newWorkspaces);
-        setWorkspaceApps(newWorkspaceApps);
+        await updateWorkspaceApps(newWorkspaceApps);
 
         if (onWorkspacesChanged) {
           await onWorkspacesChanged();
@@ -89,9 +66,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
         [workspacePath]: { bundleId: app.bundleId || "", name: app.name },
       };
 
-      await saveWorkspaceApps(newWorkspaceApps);
-
-      setWorkspaceApps(newWorkspaceApps);
+      await updateWorkspaceApps(newWorkspaceApps);
 
       await showToast({
         message: `${path.basename(workspacePath)} → ${app.name}`,
@@ -108,9 +83,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       const newWorkspaceApps = { ...workspaceApps };
       delete newWorkspaceApps[workspacePath];
 
-      await saveWorkspaceApps(newWorkspaceApps);
-
-      setWorkspaceApps(newWorkspaceApps);
+      await updateWorkspaceApps(newWorkspaceApps);
 
       await showToast({ style: Toast.Style.Success, title: "Application Reset" });
     } catch {
@@ -130,9 +103,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
 
       newWorkspaces.splice(newIndex, 0, moved);
 
-      await saveStoredWorkspaces(newWorkspaces);
-
-      setWorkspaces(newWorkspaces);
+      await updateWorkspaces(newWorkspaces);
 
       if (onWorkspacesChanged) {
         await onWorkspacesChanged();
@@ -144,20 +115,33 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
     }
   }
 
+  const handleDefaultAppSelect = async (app: Application) => {
+    await updateDefaultApp({ bundleId: app.bundleId || "", name: app.name });
+    await showToast({ message: app.name, style: Toast.Style.Success, title: "App Updated" });
+  };
+
   const handleTerminalSelect = async (app: Application) => {
-    await saveStoredTerminalApp({ bundleId: app.bundleId || "", name: app.name });
-
-    setTerminalApp({ bundleId: app.bundleId || "", name: app.name });
-
+    await updateTerminalApp({ bundleId: app.bundleId || "", name: app.name });
     await showToast({ message: app.name, style: Toast.Style.Success, title: "Terminal Updated" });
   };
 
   const handleTerminalReset = async () => {
-    await saveStoredTerminalApp(null);
-
-    setTerminalApp(null);
-
+    await updateTerminalApp(null);
     await showToast({ style: Toast.Style.Success, title: "Terminal Reset" });
+  };
+
+  const toggleGitStatus = async () => {
+    const newValue = !showGitStatus;
+    await updateShowGitStatus(newValue);
+
+    if (onWorkspacesChanged) {
+      await onWorkspacesChanged();
+    }
+
+    await showToast({
+      style: Toast.Style.Success,
+      title: newValue ? "Git status enabled" : "Git status disabled",
+    });
   };
 
   return (
@@ -180,8 +164,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
               <ActionPanel>
                 <Action.Push
                   icon={Icon.Pencil}
-                  onPop={loadSettings}
-                  target={<SelectEditor />}
+                  target={<SelectEditor onSelect={handleDefaultAppSelect} />}
                   title="Change Application"
                 />
               </ActionPanel>
@@ -203,7 +186,6 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
               <ActionPanel>
                 <Action.Push
                   icon={Icon.Pencil}
-                  onPop={loadSettings}
                   target={<SelectEditor onReset={handleTerminalReset} onSelect={handleTerminalSelect} />}
                   title="Change Terminal"
                 />
@@ -232,6 +214,72 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
                   : "Install Git to see branch and sync status"
             }
             title="Git Integration"
+          />
+          <List.Item
+            accessories={[
+              {
+                icon: showGitStatus ? Icon.CheckCircle : Icon.Circle,
+                tag: {
+                  color: showGitStatus ? Color.Green : Color.SecondaryText,
+                  value: showGitStatus ? "Enabled" : "Disabled",
+                },
+              },
+            ]}
+            actions={
+              <ActionPanel>
+                <Action
+                  icon={showGitStatus ? Icon.EyeDisabled : Icon.Eye}
+                  onAction={toggleGitStatus}
+                  title={showGitStatus ? "Disable Git Status" : "Enable Git Status"}
+                />
+              </ActionPanel>
+            }
+            icon={Icon.MagnifyingGlass}
+            subtitle="Show branch and sync status in the list"
+            title="Show Git Status"
+          />
+          <List.Item
+            accessories={[
+              {
+                icon: fzfAvailable ? Icon.Check : Icon.XMarkCircle,
+                tag: {
+                  color: fzfAvailable ? Color.Green : Color.Red,
+                  value: fzfAvailable ? "Available" : "Not installed",
+                },
+              },
+            ]}
+            icon={Icon.MagnifyingGlass}
+            subtitle={
+              fzfAvailable === null
+                ? "Checking..."
+                : fzfAvailable
+                  ? "Standard FZF search algorithm enabled"
+                  : "Install FZF to enable advanced fuzzy search"
+            }
+            title="FZF Integration"
+          />
+          <List.Item
+            accessories={[
+              {
+                icon: showFzfStatus ? Icon.CheckCircle : Icon.Circle,
+                tag: {
+                  color: showFzfStatus ? Color.Green : Color.SecondaryText,
+                  value: showFzfStatus ? "Enabled" : "Disabled",
+                },
+              },
+            ]}
+            actions={
+              <ActionPanel>
+                <Action
+                  icon={showFzfStatus ? Icon.Circle : Icon.CheckCircle}
+                  onAction={() => updateShowFzfStatus(!showFzfStatus)}
+                  title={showFzfStatus ? "Disable FZF Search" : "Enable FZF Search"}
+                />
+              </ActionPanel>
+            }
+            icon={Icon.MagnifyingGlass}
+            subtitle="Toggle fuzzy search for your projects"
+            title="Use fzf for Search"
           />
         </List.Section>
       )}
@@ -317,17 +365,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
         <List.Item
           actions={
             <ActionPanel>
-              <Action.Push
-                onPop={() => {
-                  loadSettings();
-
-                  if (onWorkspacesChanged) {
-                    onWorkspacesChanged();
-                  }
-                }}
-                target={<AddWorkspaceForm />}
-                title="Add Workspace"
-              />
+              <Action.Push onPop={loadData} target={<AddWorkspaceForm />} title="Add Workspace" />
             </ActionPanel>
           }
           icon={Icon.Plus}

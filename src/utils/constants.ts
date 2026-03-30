@@ -4,3 +4,5 @@ export const STORAGE_KEY_PINNED_PROJECTS = "workspace-pinned-projects";
 export const STORAGE_KEY_APP = "workspace-default-app";
 export const STORAGE_KEY_WORKSPACE_APPS = "workspace-workspace-app";
 export const STORAGE_KEY_TERMINAL_APP = "workspace-terminal-app";
+export const STORAGE_KEY_SHOW_FZF_STATUS = "workspace-show-fzf-status";
+export const STORAGE_KEY_SHOW_GIT_STATUS = "workspace-show-git-status";

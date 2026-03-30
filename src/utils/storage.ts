@@ -5,6 +5,8 @@ import {
   STORAGE_KEY_APP,
   STORAGE_KEY_ONBOARDING_COMPLETED,
   STORAGE_KEY_PINNED_PROJECTS,
+  STORAGE_KEY_SHOW_FZF_STATUS,
+  STORAGE_KEY_SHOW_GIT_STATUS,
   STORAGE_KEY_TERMINAL_APP,
   STORAGE_KEY_WORKSPACE_APPS,
   STORAGE_KEY_WORKSPACES,
@@ -20,6 +22,16 @@ export async function getStoredOnboardingCompleted(): Promise<boolean> {
 
 export async function getStoredPinnedProjects(): Promise<string[]> {
   return getStoredItem<string[]>(STORAGE_KEY_PINNED_PROJECTS, []);
+}
+
+export async function getStoredShowFzfStatus(): Promise<boolean> {
+  const item = await LocalStorage.getItem<boolean>(STORAGE_KEY_SHOW_FZF_STATUS);
+
+  return item !== undefined ? item : true;
+}
+
+export async function getStoredShowGitStatus(): Promise<boolean> {
+  return getStoredItem<boolean>(STORAGE_KEY_SHOW_GIT_STATUS, true);
 }
 
 export async function getStoredTerminalApp(): Promise<App | null> {
@@ -40,6 +52,14 @@ export async function saveStoredApp(app: App): Promise<void> {
 
 export async function saveStoredPinnedProjects(paths: string[]): Promise<void> {
   await LocalStorage.setItem(STORAGE_KEY_PINNED_PROJECTS, JSON.stringify(paths));
+}
+
+export async function saveStoredShowFzfStatus(show: boolean): Promise<void> {
+  await LocalStorage.setItem(STORAGE_KEY_SHOW_FZF_STATUS, show);
+}
+
+export async function saveStoredShowGitStatus(show: boolean): Promise<void> {
+  await LocalStorage.setItem(STORAGE_KEY_SHOW_GIT_STATUS, JSON.stringify(show));
 }
 
 export async function saveStoredTerminalApp(app: App | null): Promise<void> {

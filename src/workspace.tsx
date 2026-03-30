@@ -7,10 +7,13 @@ import ProjectItem from "@/components/ProjectItem";
 import Settings from "@/components/Settings";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { Project } from "@/types";
+import { fuzzySearch } from "@/utils/fzf";
 
 export default function Command() {
   const {
     defaultApp,
+    fzfAvailable,
+    fzfPath,
     isLoading,
     loadData,
     onboardingCompleted,
@@ -18,6 +21,8 @@ export default function Command() {
     projects,
     reorderPinnedProject,
     setOnboardingCompleted,
+    showFzfStatus,
+    showGitStatus,
     terminalApp,
     togglePinProject,
     workspaceApps,
@@ -31,16 +36,27 @@ export default function Command() {
       return [];
     }
 
-    return projects.filter((project) => {
-      const searchLower = searchText.toLowerCase();
+    if (!searchText) {
+      return projects;
+    }
 
+    if (fzfAvailable && fzfPath && showFzfStatus) {
+      const results = fuzzySearch(projects, searchText, fzfPath);
+      if (results.length > 0 || searchText === "") {
+        return results;
+      }
+    }
+
+    // Default search (maintain it how it was)
+    const searchLower = searchText.toLowerCase();
+    return projects.filter((project) => {
       return (
         project.name.toLowerCase().includes(searchLower) ||
         project.fullPath.toLowerCase().includes(searchLower) ||
-        project.gitStatus?.branch?.toLowerCase().includes(searchLower)
+        (showGitStatus && project.gitStatus?.branch?.toLowerCase().includes(searchLower))
       );
     });
-  }, [projects, searchText]);
+  }, [projects, searchText, fzfAvailable, fzfPath, showFzfStatus, showGitStatus]);
 
   const pinnedSet = useMemo(() => new Set(pinnedProjects), [pinnedProjects]);
 
@@ -91,6 +107,7 @@ export default function Command() {
               onReorderPin={reorderPinnedProject}
               onTogglePin={togglePinProject}
               project={project}
+              showGitStatus={showGitStatus}
               terminalApp={terminalApp}
               workspaceApps={workspaceApps}
               workspacePath={project.parentFolder}
@@ -117,6 +134,7 @@ export default function Command() {
                 onReorderPin={reorderPinnedProject}
                 onTogglePin={togglePinProject}
                 project={project}
+                showGitStatus={showGitStatus}
                 terminalApp={terminalApp}
                 workspaceApps={workspaceApps}
                 workspacePath={workspace}

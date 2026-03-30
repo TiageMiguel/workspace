@@ -8,20 +8,28 @@ import {
   STORAGE_KEY_APP,
   STORAGE_KEY_ONBOARDING_COMPLETED,
   STORAGE_KEY_PINNED_PROJECTS,
+  STORAGE_KEY_SHOW_FZF_STATUS,
+  STORAGE_KEY_SHOW_GIT_STATUS,
   STORAGE_KEY_TERMINAL_APP,
   STORAGE_KEY_WORKSPACE_APPS,
   STORAGE_KEY_WORKSPACES,
 } from "@/utils/constants";
-import { getGitStatus } from "@/utils/git";
+import { getFzfPath, isFzfAvailable } from "@/utils/fzf";
+import { getGitStatus, isGitAvailable } from "@/utils/git";
 import {
   saveStoredApp,
+  saveStoredShowFzfStatus,
+  saveStoredShowGitStatus,
   saveStoredTerminalApp,
   saveStoredWorkspaces,
+  saveWorkspaceApps,
   setStoredOnboardingCompleted,
 } from "@/utils/storage";
-
 export interface UseWorkspaceReturn {
   defaultApp: App | null;
+  fzfAvailable: boolean | null;
+  fzfPath: null | string;
+  gitAvailable: boolean | null;
   isLoading: boolean;
   loadData: () => Promise<void>;
   onboardingCompleted: boolean;
@@ -29,10 +37,15 @@ export interface UseWorkspaceReturn {
   projects: Project[] | undefined;
   reorderPinnedProject: (projectPath: string, direction: "down" | "up") => Promise<void>;
   setOnboardingCompleted: (completed: boolean) => Promise<void>;
+  showFzfStatus: boolean;
+  showGitStatus: boolean;
   terminalApp: App | null;
   togglePinProject: (projectPath: string) => Promise<void>;
   updateDefaultApp: (app: App | null) => Promise<void>;
+  updateShowFzfStatus: (show: boolean) => Promise<void>;
+  updateShowGitStatus: (show: boolean) => Promise<void>;
   updateTerminalApp: (app: App | null) => Promise<void>;
+  updateWorkspaceApps: (newWorkspaceApps: Record<string, App>) => Promise<void>;
   updateWorkspaces: (newWorkspaces: string[]) => Promise<void>;
   workspaceApps: Record<string, App>;
   workspaces: string[];
@@ -42,18 +55,35 @@ export function useWorkspace(): UseWorkspaceReturn {
   const [workspaces, setWorkspaces] = useCachedState<string[]>(STORAGE_KEY_WORKSPACES, []);
   const [pinnedProjects, setPinnedProjects] = useCachedState<string[]>(STORAGE_KEY_PINNED_PROJECTS, []);
   const [defaultApp, setDefaultApp] = useCachedState<App | null>(STORAGE_KEY_APP, null);
+  const [showFzfStatus, setShowFzfStatus] = useCachedState<boolean>(STORAGE_KEY_SHOW_FZF_STATUS, true);
+  const [showGitStatus, setShowGitStatus] = useCachedState<boolean>(STORAGE_KEY_SHOW_GIT_STATUS, true);
   const [terminalApp, setTerminalApp] = useCachedState<App | null>(STORAGE_KEY_TERMINAL_APP, null);
-  const [workspaceApps] = useCachedState<Record<string, App>>(STORAGE_KEY_WORKSPACE_APPS, {});
+  const [workspaceApps, setWorkspaceApps] = useCachedState<Record<string, App>>(STORAGE_KEY_WORKSPACE_APPS, {});
   const [onboardingCompleted, setOnboardingCompleted] = useCachedState<boolean>(
     STORAGE_KEY_ONBOARDING_COMPLETED,
     false,
   );
 
+  const { data: gitAvailable } = useCachedPromise(async () => {
+    return await isGitAvailable();
+  }, []);
+
+  const { data: fzfInfo } = useCachedPromise(async () => {
+    const available = await isFzfAvailable();
+    const path = await getFzfPath();
+
+    return { available, path };
+  }, []);
+
   const { data: projects, isLoading: isProjectsLoading } = useCachedPromise(
-    async (ws: string[]) => {
+    async (ws: string[], showGit: boolean) => {
       const allProjects = (await Promise.all(ws.map(getSubdirectories))).flat();
       const projectsWithStatus = await Promise.all(
         allProjects.map(async (project) => {
+          if (!showGit) {
+            return { ...project, gitStatus: null };
+          }
+
           const status = await getGitStatus(project.fullPath);
 
           return { ...project, gitStatus: status };
@@ -62,7 +92,7 @@ export function useWorkspace(): UseWorkspaceReturn {
 
       return projectsWithStatus;
     },
-    [workspaces],
+    [workspaces, showGitStatus],
     {
       initialData: [],
     },
@@ -116,14 +146,35 @@ export function useWorkspace(): UseWorkspaceReturn {
     setDefaultApp(app);
   };
 
+  const updateShowFzfStatus = async (show: boolean): Promise<void> => {
+    await saveStoredShowFzfStatus(show);
+
+    setShowFzfStatus(show);
+  };
+
+  const updateShowGitStatus = async (show: boolean): Promise<void> => {
+    await saveStoredShowGitStatus(show);
+
+    setShowGitStatus(show);
+  };
+
   const updateTerminalApp = async (app: App | null): Promise<void> => {
     await saveStoredTerminalApp(app);
 
     setTerminalApp(app);
   };
 
+  const updateWorkspaceApps = async (newWorkspaceApps: Record<string, App>): Promise<void> => {
+    await saveWorkspaceApps(newWorkspaceApps);
+
+    setWorkspaceApps(newWorkspaceApps);
+  };
+
   return {
     defaultApp,
+    fzfAvailable: fzfInfo?.available ?? null,
+    fzfPath: fzfInfo?.path ?? null,
+    gitAvailable: gitAvailable ?? null,
     isLoading: isProjectsLoading,
     loadData,
     onboardingCompleted,
@@ -131,10 +182,15 @@ export function useWorkspace(): UseWorkspaceReturn {
     projects,
     reorderPinnedProject,
     setOnboardingCompleted: setOnboardingCompletedState,
+    showFzfStatus,
+    showGitStatus,
     terminalApp,
     togglePinProject,
     updateDefaultApp,
+    updateShowFzfStatus,
+    updateShowGitStatus,
     updateTerminalApp,
+    updateWorkspaceApps,
     updateWorkspaces,
     workspaceApps,
     workspaces,
