@@ -150,7 +150,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       searchBarPlaceholder={showGeneral ? "Search settings..." : "Search for workspaces..."}
     >
       {showGeneral && (
-        <List.Section title="General">
+        <List.Section title="General Settings">
           <List.Item
             accessories={[
               {
@@ -195,17 +195,21 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
             subtitle="Open your projects in a terminal"
             title="Terminal App"
           />
+        </List.Section>
+      )}
+
+      {showGeneral && (
+        <List.Section title="GIT Integration">
           <List.Item
             accessories={[
               {
-                icon: gitAvailable ? Icon.Check : Icon.XMarkCircle,
                 tag: {
                   color: gitAvailable ? Color.Green : Color.Red,
                   value: gitAvailable ? "Available" : "Not installed",
                 },
               },
             ]}
-            icon={Icon.Code}
+            icon={Icon.Shuffle}
             subtitle={
               gitAvailable === null
                 ? "Checking..."
@@ -215,33 +219,37 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
             }
             title="Git Integration"
           />
-          <List.Item
-            accessories={[
-              {
-                icon: showGitStatus ? Icon.CheckCircle : Icon.Circle,
-                tag: {
-                  color: showGitStatus ? Color.Green : Color.SecondaryText,
-                  value: showGitStatus ? "Enabled" : "Disabled",
+          {gitAvailable && (
+            <List.Item
+              accessories={[
+                {
+                  tag: {
+                    color: showGitStatus ? Color.Green : Color.SecondaryText,
+                    value: showGitStatus ? "Enabled" : "Disabled",
+                  },
                 },
-              },
-            ]}
-            actions={
-              <ActionPanel>
-                <Action
-                  icon={showGitStatus ? Icon.EyeDisabled : Icon.Eye}
-                  onAction={toggleGitStatus}
-                  title={showGitStatus ? "Disable Git Status" : "Enable Git Status"}
-                />
-              </ActionPanel>
-            }
-            icon={Icon.MagnifyingGlass}
-            subtitle="Show branch and sync status in the list"
-            title="Show Git Status"
-          />
+              ]}
+              actions={
+                <ActionPanel>
+                  <Action
+                    onAction={toggleGitStatus}
+                    title={showGitStatus ? "Disable Git Status" : "Enable Git Status"}
+                  />
+                </ActionPanel>
+              }
+              icon={Icon.Shuffle}
+              subtitle="Show branch and sync status in the list"
+              title="Show Git Status"
+            />
+          )}
+        </List.Section>
+      )}
+
+      {showGeneral && (
+        <List.Section title="FZF Integration">
           <List.Item
             accessories={[
               {
-                icon: fzfAvailable ? Icon.Check : Icon.XMarkCircle,
                 tag: {
                   color: fzfAvailable ? Color.Green : Color.Red,
                   value: fzfAvailable ? "Available" : "Not installed",
@@ -256,31 +264,31 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
                   ? "Standard FZF search algorithm enabled"
                   : "Install FZF to enable advanced fuzzy search"
             }
-            title="FZF Integration"
+            title="FZF (Smart Search)"
           />
-          <List.Item
-            accessories={[
-              {
-                icon: showFzfStatus ? Icon.CheckCircle : Icon.Circle,
-                tag: {
-                  color: showFzfStatus ? Color.Green : Color.SecondaryText,
-                  value: showFzfStatus ? "Enabled" : "Disabled",
+          {fzfAvailable && (
+            <List.Item
+              accessories={[
+                {
+                  tag: {
+                    color: showFzfStatus ? Color.Green : Color.SecondaryText,
+                    value: showFzfStatus ? "Enabled" : "Disabled",
+                  },
                 },
-              },
-            ]}
-            actions={
-              <ActionPanel>
-                <Action
-                  icon={showFzfStatus ? Icon.Circle : Icon.CheckCircle}
-                  onAction={() => updateShowFzfStatus(!showFzfStatus)}
-                  title={showFzfStatus ? "Disable FZF Search" : "Enable FZF Search"}
-                />
-              </ActionPanel>
-            }
-            icon={Icon.MagnifyingGlass}
-            subtitle="Toggle fuzzy search for your projects"
-            title="Use fzf for Search"
-          />
+              ]}
+              actions={
+                <ActionPanel>
+                  <Action
+                    onAction={() => updateShowFzfStatus(!showFzfStatus)}
+                    title={showFzfStatus ? "Disable FZF Search" : "Enable FZF Search"}
+                  />
+                </ActionPanel>
+              }
+              icon={Icon.MagnifyingGlass}
+              subtitle="Toggle fuzzy search for your projects"
+              title="Use FZF for Search"
+            />
+          )}
         </List.Section>
       )}
 
@@ -292,11 +300,11 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
               accessories={
                 workspaceApp
                   ? [
-                      {
-                        tag: { color: Color.SecondaryText, value: workspaceApp.name },
-                        tooltip: "Custom App Set",
-                      },
-                    ]
+                    {
+                      tag: { color: Color.SecondaryText, value: workspaceApp.name },
+                      tooltip: "Custom App Set",
+                    },
+                  ]
                   : []
               }
               actions={

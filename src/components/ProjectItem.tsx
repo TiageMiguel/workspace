@@ -40,14 +40,14 @@ export default function ProjectItem({
       accessories={[
         ...(project.gitStatus && showGitStatus
           ? [
-              {
-                tag: {
-                  color: gitColor,
-                  value: formatGitBadge(project.gitStatus),
-                },
-                tooltip: `Branch: ${project.gitStatus.branch}\nPull: ${project.gitStatus.pull}\nPush: ${project.gitStatus.push}`,
+            {
+              tag: {
+                color: gitColor,
+                value: formatGitBadge(project.gitStatus),
               },
-            ]
+              tooltip: `Branch: ${project.gitStatus.branch}\nPull: ${project.gitStatus.pull}\nPush: ${project.gitStatus.push}`,
+            },
+          ]
           : []),
       ]}
       actions={
@@ -62,7 +62,7 @@ export default function ProjectItem({
             <Action.Open
               application={terminalApp?.bundleId}
               icon={Icon.Terminal}
-              shortcut={{ key: "t", modifiers: ["cmd", "shift"] }}
+              shortcut={{ key: "enter", modifiers: ["cmd", "shift"] }}
               target={project.fullPath}
               title="Open in Terminal"
             />
