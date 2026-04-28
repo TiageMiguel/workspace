@@ -58,7 +58,9 @@ export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm onSubmit={handleSubmit} title="Add Workspace" />
+          <ActionPanel.Section title="Workspace">
+            <Action.SubmitForm onSubmit={handleSubmit} title="Add Workspace" />
+          </ActionPanel.Section>
         </ActionPanel>
       }
       navigationTitle="Add Workspace"

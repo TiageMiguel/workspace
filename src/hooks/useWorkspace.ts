@@ -18,6 +18,7 @@ import { getFzfPath, isFzfAvailable } from "@/utils/fzf";
 import { getGitStatus, isGitAvailable } from "@/utils/git";
 import {
   saveStoredApp,
+  saveStoredPinnedProjects,
   saveStoredShowFzfStatus,
   saveStoredShowGitStatus,
   saveStoredTerminalApp,
@@ -42,6 +43,7 @@ export interface UseWorkspaceReturn {
   terminalApp: App | null;
   togglePinProject: (projectPath: string) => Promise<void>;
   updateDefaultApp: (app: App | null) => Promise<void>;
+  updatePinnedProjects: (projects: string[]) => Promise<void>;
   updateShowFzfStatus: (show: boolean) => Promise<void>;
   updateShowGitStatus: (show: boolean) => Promise<void>;
   updateTerminalApp: (app: App | null) => Promise<void>;
@@ -139,11 +141,15 @@ export function useWorkspace(): UseWorkspaceReturn {
   };
 
   const updateDefaultApp = async (app: App | null): Promise<void> => {
-    if (app) {
-      await saveStoredApp(app);
-    }
+    await saveStoredApp(app);
 
     setDefaultApp(app);
+  };
+
+  const updatePinnedProjects = async (projects: string[]): Promise<void> => {
+    await saveStoredPinnedProjects(projects);
+
+    setPinnedProjects(projects);
   };
 
   const updateShowFzfStatus = async (show: boolean): Promise<void> => {
@@ -187,6 +193,7 @@ export function useWorkspace(): UseWorkspaceReturn {
     terminalApp,
     togglePinProject,
     updateDefaultApp,
+    updatePinnedProjects,
     updateShowFzfStatus,
     updateShowGitStatus,
     updateTerminalApp,

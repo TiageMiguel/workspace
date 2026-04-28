@@ -40,19 +40,19 @@ export default function ProjectItem({
       accessories={[
         ...(project.gitStatus && showGitStatus
           ? [
-            {
-              tag: {
-                color: gitColor,
-                value: formatGitBadge(project.gitStatus),
+              {
+                tag: {
+                  color: gitColor,
+                  value: formatGitBadge(project.gitStatus),
+                },
+                tooltip: `Branch: ${project.gitStatus.branch}\nPull: ${project.gitStatus.pull}\nPush: ${project.gitStatus.push}`,
               },
-              tooltip: `Branch: ${project.gitStatus.branch}\nPull: ${project.gitStatus.pull}\nPush: ${project.gitStatus.push}`,
-            },
-          ]
+            ]
           : []),
       ]}
       actions={
         <ActionPanel>
-          <ActionPanel.Section>
+          <ActionPanel.Section title="Open">
             <Action.Open
               application={appToUse?.bundleId}
               icon={Icon.AppWindow}
@@ -78,7 +78,7 @@ export default function ProjectItem({
                   icon={Icon.ArrowUp}
                   onAction={() => onReorderPin(project.fullPath, "up")}
                   shortcut={{ key: "arrowUp", modifiers: ["opt", "cmd"] }}
-                  title="Move Pinned Project Up"
+                  title="Move Pinned Project up"
                 />
                 <Action
                   icon={Icon.ArrowDown}
@@ -89,7 +89,7 @@ export default function ProjectItem({
               </>
             )}
           </ActionPanel.Section>
-          <ActionPanel.Section>
+          <ActionPanel.Section title="File">
             <Action.ShowInFinder path={project.fullPath} title="Show in Finder" />
             <Action.OpenWith path={project.fullPath} title="Open with…" />
           </ActionPanel.Section>
@@ -101,7 +101,7 @@ export default function ProjectItem({
               title="Copy Project Path"
             />
           </ActionPanel.Section>
-          <ActionPanel.Section>
+          <ActionPanel.Section title="Settings">
             <Action.Push
               icon={Icon.Gear}
               shortcut={{ key: ",", modifiers: ["cmd", "shift"] }}

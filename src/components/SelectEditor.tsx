@@ -6,7 +6,7 @@ import { saveStoredApp } from "@/utils/storage";
 
 interface SelectEditorProps {
   onReset?: () => void;
-  onSelect?: (app: Application) => void;
+  onSelect?: (app: Application) => Promise<void> | void;
 }
 
 export default function SelectEditor({ onReset, onSelect }: SelectEditorProps) {
@@ -15,7 +15,7 @@ export default function SelectEditor({ onReset, onSelect }: SelectEditorProps) {
 
   const handleSelect = async (app: Application) => {
     if (onSelect) {
-      onSelect(app);
+      await onSelect(app);
       pop();
 
       return;
@@ -41,7 +41,9 @@ export default function SelectEditor({ onReset, onSelect }: SelectEditorProps) {
         <List.Item
           actions={
             <ActionPanel>
-              <Action onAction={handleReset} title="Reset to Default" />
+              <ActionPanel.Section title="Default">
+                <Action onAction={handleReset} title="Reset to Default" />
+              </ActionPanel.Section>
             </ActionPanel>
           }
           icon={Icon.ArrowCounterClockwise}
@@ -53,7 +55,9 @@ export default function SelectEditor({ onReset, onSelect }: SelectEditorProps) {
         <List.Item
           actions={
             <ActionPanel>
-              <Action icon={Icon.Check} onAction={() => handleSelect(app)} title="Select App" />
+              <ActionPanel.Section title="Selection">
+                <Action icon={Icon.Check} onAction={() => handleSelect(app)} title="Select App" />
+              </ActionPanel.Section>
             </ActionPanel>
           }
           icon={{ fileIcon: app.path }}

@@ -46,8 +46,12 @@ export async function getWorkspaceApps(): Promise<Record<string, App>> {
   return getStoredItem<Record<string, App>>(STORAGE_KEY_WORKSPACE_APPS, {});
 }
 
-export async function saveStoredApp(app: App): Promise<void> {
-  await LocalStorage.setItem(STORAGE_KEY_APP, JSON.stringify(app));
+export async function saveStoredApp(app: App | null): Promise<void> {
+  if (app) {
+    await LocalStorage.setItem(STORAGE_KEY_APP, JSON.stringify(app));
+  } else {
+    await LocalStorage.removeItem(STORAGE_KEY_APP);
+  }
 }
 
 export async function saveStoredPinnedProjects(paths: string[]): Promise<void> {
