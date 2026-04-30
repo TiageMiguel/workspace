@@ -30,8 +30,10 @@ export async function isGitAvailable(): Promise<boolean> {
 const GIT_STATUS_COMMAND = `
 branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null);
 counts=$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null || echo "0 0");
+dirty=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ');
 echo "$branch";
-echo "$counts"
+echo "$counts";
+echo "$dirty"
 `.trim();
 
 export async function getGitStatus(repoPath: string): Promise<GitStatus | null> {
@@ -60,9 +62,11 @@ export async function getGitStatus(repoPath: string): Promise<GitStatus | null> 
     }
 
     const [ahead, behind] = (lines[1]?.trim().split(/\s+/) || []).map(Number);
+    const dirty = parseInt(lines[2]?.trim() || "0", 10) || 0;
 
     return {
       branch: branchName,
+      dirty,
       pull: behind || 0,
       push: ahead || 0,
     };

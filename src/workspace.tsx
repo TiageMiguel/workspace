@@ -1,5 +1,4 @@
-import { Action, ActionPanel, List, showToast, Toast } from "@raycast/api";
-import { readFile } from "fs/promises";
+import { Action, ActionPanel, Grid, Icon, List } from "@raycast/api";
 import path from "path";
 import { useMemo, useState } from "react";
 
@@ -7,8 +6,9 @@ import Onboarding from "@/components/Onboarding";
 import ProjectItem from "@/components/ProjectItem";
 import Settings from "@/components/Settings";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { App, Project } from "@/types";
+import { Project } from "@/types";
 import { fuzzySearch } from "@/utils/fzf";
+import { importSettingsFromFile } from "@/utils/storage";
 
 export default function Command() {
   const {
@@ -20,12 +20,16 @@ export default function Command() {
     onboardingCompleted,
     pinnedProjects,
     projects,
+    recentProjects,
+    recordProjectOpen,
     reorderPinnedProject,
     setOnboardingCompleted,
     showFzfStatus,
     showGitStatus,
+    showRecentProjects,
     terminalApp,
     togglePinProject,
+    toggleViewMode,
     updateDefaultApp,
     updatePinnedProjects,
     updateShowFzfStatus,
@@ -33,6 +37,7 @@ export default function Command() {
     updateTerminalApp,
     updateWorkspaceApps,
     updateWorkspaces,
+    viewMode,
     workspaceApps,
     workspaces: parentWorkspaces,
   } = useWorkspace();
@@ -68,17 +73,22 @@ export default function Command() {
 
   const pinnedSet = useMemo(() => new Set(pinnedProjects), [pinnedProjects]);
 
+  const recentSet = useMemo(() => new Set(recentProjects.map((r) => r.path)), [recentProjects]);
+
   const projectsByWorkspace = useMemo(() => {
     const map: Record<string, Project[]> = {};
 
     parentWorkspaces.forEach((ws: string) => {
       map[ws] = filteredProjects.filter(
-        (p: Project) => p.parentFolder === ws && (searchText || !pinnedSet.has(p.fullPath)),
+        (p: Project) =>
+          p.parentFolder === ws &&
+          (searchText || !pinnedSet.has(p.fullPath)) &&
+          (searchText || !showRecentProjects || !recentSet.has(p.fullPath)),
       );
     });
 
     return map;
-  }, [parentWorkspaces, filteredProjects, pinnedSet, searchText]);
+  }, [parentWorkspaces, filteredProjects, pinnedSet, recentSet, searchText, showRecentProjects]);
 
   const pinnedList = useMemo(() => {
     const projectsMap = new Map((projects || []).map((p) => [p.fullPath, p]));
@@ -86,81 +96,61 @@ export default function Command() {
     return pinnedProjects.map((path) => projectsMap.get(path)).filter((p): p is Project => !!p);
   }, [projects, pinnedProjects]);
 
+  const recentList = useMemo(() => {
+    if (!showRecentProjects) return [];
+    const projectsMap = new Map((projects || []).map((p) => [p.fullPath, p]));
+
+    return recentProjects
+      .map((r) => projectsMap.get(r.path))
+      .filter((p): p is Project => !!p && !pinnedSet.has(p.fullPath));
+  }, [projects, recentProjects, showRecentProjects, pinnedSet]);
+
   const hasVisibleProjects = useMemo(() => {
     if (pinnedList.length > 0 && !searchText) {
       return true;
     }
 
-    return parentWorkspaces.some((workspace) => (projectsByWorkspace[workspace] || []).length > 0);
-  }, [parentWorkspaces, pinnedList.length, projectsByWorkspace, searchText]);
-
-  function isApp(value: unknown): value is App {
-    return Boolean(
-      value &&
-      typeof value === "object" &&
-      "bundleId" in value &&
-      "name" in value &&
-      typeof (value as App).bundleId === "string" &&
-      typeof (value as App).name === "string",
-    );
-  }
-
-  async function importSettingsFromFile(filePath: string): Promise<boolean> {
-    try {
-      const fileContents = await readFile(filePath, "utf-8");
-      const parsed = JSON.parse(fileContents) as unknown;
-      const parsedSettings =
-        parsed &&
-        typeof parsed === "object" &&
-        "settings" in parsed &&
-        parsed.settings &&
-        typeof parsed.settings === "object"
-          ? (parsed.settings as Record<string, unknown>)
-          : ((parsed || {}) as Record<string, unknown>);
-
-      const importedDefaultApp = isApp(parsedSettings.defaultApp) ? parsedSettings.defaultApp : null;
-      const importedTerminalApp = isApp(parsedSettings.terminalApp) ? parsedSettings.terminalApp : null;
-      const importedWorkspaces = Array.isArray(parsedSettings.workspaces)
-        ? parsedSettings.workspaces.filter((value): value is string => typeof value === "string")
-        : [];
-      const importedWorkspaceApps =
-        parsedSettings.workspaceApps && typeof parsedSettings.workspaceApps === "object"
-          ? Object.fromEntries(
-              Object.entries(parsedSettings.workspaceApps).filter(
-                (entry): entry is [string, App] => typeof entry[0] === "string" && isApp(entry[1]),
-              ),
-            )
-          : {};
-      const importedPinnedProjects = Array.isArray(parsedSettings.pinnedProjects)
-        ? parsedSettings.pinnedProjects.filter((value): value is string => typeof value === "string")
-        : [];
-      const importedShowGitStatus =
-        typeof parsedSettings.showGitStatus === "boolean" ? parsedSettings.showGitStatus : true;
-      const importedShowFzfStatus =
-        typeof parsedSettings.showFzfStatus === "boolean" ? parsedSettings.showFzfStatus : true;
-      const importedOnboardingCompleted =
-        typeof parsedSettings.onboardingCompleted === "boolean" ? parsedSettings.onboardingCompleted : false;
-
-      await updateDefaultApp(importedDefaultApp);
-      await updateTerminalApp(importedTerminalApp);
-      await updateWorkspaces(importedWorkspaces);
-      await updateWorkspaceApps(importedWorkspaceApps);
-      await updatePinnedProjects(importedPinnedProjects);
-      await updateShowGitStatus(importedShowGitStatus);
-      await updateShowFzfStatus(importedShowFzfStatus);
-      await setOnboardingCompleted(importedOnboardingCompleted);
-      await loadData();
-
-      await showToast({
-        message: path.basename(filePath),
-        style: Toast.Style.Success,
-        title: "Settings Imported",
-      });
+    if (recentList.length > 0 && !searchText) {
       return true;
-    } catch {
-      await showToast({ style: Toast.Style.Failure, title: "Failed to Import Settings File" });
-      return false;
     }
+
+    return parentWorkspaces.some((workspace) => (projectsByWorkspace[workspace] || []).length > 0);
+  }, [parentWorkspaces, pinnedList.length, recentList.length, projectsByWorkspace, searchText]);
+
+  async function handleImportSettings(filePath: string): Promise<boolean> {
+    const fallback = {
+      defaultApp,
+      onboardingCompleted,
+      pinnedProjects: Array.from(pinnedSet),
+      recentProjects,
+      recentProjectsCount,
+      showFzfStatus,
+      showGitStatus,
+      showRecentProjects,
+      terminalApp,
+      viewMode,
+      workspaceApps,
+      workspaces: parentWorkspaces,
+    };
+
+    const importedSettings = await importSettingsFromFile(filePath, fallback);
+    if (!importedSettings) return false;
+
+    await updateDefaultApp(importedSettings.defaultApp);
+    await updateTerminalApp(importedSettings.terminalApp);
+    await updateWorkspaces(importedSettings.workspaces);
+    await updateWorkspaceApps(importedSettings.workspaceApps);
+    await updatePinnedProjects(importedSettings.pinnedProjects);
+    await updateShowGitStatus(importedSettings.showGitStatus);
+    await updateShowFzfStatus(importedSettings.showFzfStatus);
+    await updateShowRecentProjects(importedSettings.showRecentProjects);
+    await updateRecentProjects(importedSettings.recentProjects);
+    await updateRecentProjectsCount(importedSettings.recentProjectsCount);
+    await updateViewMode(importedSettings.viewMode);
+    await setOnboardingCompleted(importedSettings.onboardingCompleted);
+
+    await loadData();
+    return true;
   }
 
   if (!isLoading && !onboardingCompleted) {
@@ -169,10 +159,101 @@ export default function Command() {
         defaultApp={defaultApp}
         loadData={loadData}
         onComplete={() => setOnboardingCompleted(true)}
-        onImportSettings={importSettingsFromFile}
+        onImportSettings={handleImportSettings}
         onSelectDefaultApp={(app) => updateDefaultApp({ bundleId: app.bundleId || "", name: app.name })}
         workspaces={parentWorkspaces}
       />
+    );
+  }
+
+  const renderProjects = (items: Project[], isPinned: boolean) =>
+    items.map((project) => (
+      <ProjectItem
+        defaultApp={defaultApp}
+        isPinned={isPinned || pinnedSet.has(project.fullPath)}
+        key={project.fullPath}
+        onOpen={recordProjectOpen}
+        onRefresh={loadData}
+        onReorderPin={reorderPinnedProject}
+        onTogglePin={togglePinProject}
+        project={project}
+        showGitStatus={showGitStatus}
+        terminalApp={terminalApp}
+        viewMode={viewMode}
+        workspaceApps={workspaceApps}
+        workspacePath={project.parentFolder}
+      />
+    ));
+
+  if (viewMode === "grid") {
+    return (
+      <Grid
+        isLoading={isLoading}
+        onSearchTextChange={setSearchText}
+        searchBarAccessory={
+          <Grid.Dropdown
+            onChange={(val) => {
+              if (val !== viewMode) toggleViewMode();
+            }}
+            tooltip="View Mode"
+            value={viewMode}
+          >
+            <Grid.Dropdown.Item icon={Icon.List} title="List" value="list" />
+            <Grid.Dropdown.Item icon={Icon.AppWindowGrid3x3} title="Grid" value="grid" />
+          </Grid.Dropdown>
+        }
+        searchBarPlaceholder="Search for projects..."
+        throttle
+      >
+        {pinnedList.length > 0 && !searchText && (
+          <Grid.Section title="Pinned">{renderProjects(pinnedList, true)}</Grid.Section>
+        )}
+
+        {recentList.length > 0 && !searchText && (
+          <Grid.Section title="Recent">{renderProjects(recentList, false)}</Grid.Section>
+        )}
+
+        {parentWorkspaces.map((workspace) => {
+          const workspaceProjects = projectsByWorkspace[workspace] || [];
+
+          if (workspaceProjects.length === 0) return null;
+
+          const subtitle = `${workspace} • ${workspaceProjects.length} project${workspaceProjects.length === 1 ? "" : "s"}`;
+
+          return (
+            <Grid.Section key={workspace} subtitle={subtitle} title={path.basename(workspace)}>
+              {renderProjects(workspaceProjects, false)}
+            </Grid.Section>
+          );
+        })}
+
+        {parentWorkspaces.length === 0 && !isLoading && (
+          <Grid.EmptyView
+            actions={
+              <ActionPanel>
+                <ActionPanel.Section title="Get Started">
+                  <Action.Push target={<Settings onWorkspacesChanged={loadData} />} title="Open Settings" />
+                </ActionPanel.Section>
+              </ActionPanel>
+            }
+            description="Add a workspace in settings to see your projects."
+            title="No Workspaces"
+          />
+        )}
+        {parentWorkspaces.length > 0 && !isLoading && !searchText && !hasVisibleProjects && (
+          <Grid.EmptyView
+            actions={
+              <ActionPanel>
+                <ActionPanel.Section title="Manage">
+                  <Action.Push target={<Settings onWorkspacesChanged={loadData} />} title="Open Settings" />
+                </ActionPanel.Section>
+              </ActionPanel>
+            }
+            description="No folders found inside your workspaces. Add or manage workspaces in settings."
+            title="No Projects Found"
+          />
+        )}
+      </Grid>
     );
   }
 
@@ -180,53 +261,39 @@ export default function Command() {
     <List
       isLoading={isLoading}
       onSearchTextChange={setSearchText}
+      searchBarAccessory={
+        <List.Dropdown
+          onChange={(val) => {
+            if (val !== viewMode) toggleViewMode();
+          }}
+          tooltip="View Mode"
+          value={viewMode}
+        >
+          <List.Dropdown.Item icon={Icon.List} title="List" value="list" />
+          <List.Dropdown.Item icon={Icon.AppWindowGrid3x3} title="Grid" value="grid" />
+        </List.Dropdown>
+      }
       searchBarPlaceholder="Search for projects..."
       throttle
     >
       {pinnedList.length > 0 && !searchText && (
-        <List.Section title="Pinned">
-          {pinnedList.map((project) => (
-            <ProjectItem
-              defaultApp={defaultApp}
-              isPinned={true}
-              key={`pinned-${project.fullPath}`}
-              onRefresh={loadData}
-              onReorderPin={reorderPinnedProject}
-              onTogglePin={togglePinProject}
-              project={project}
-              showGitStatus={showGitStatus}
-              terminalApp={terminalApp}
-              workspaceApps={workspaceApps}
-              workspacePath={project.parentFolder}
-            />
-          ))}
-        </List.Section>
+        <List.Section title="Pinned">{renderProjects(pinnedList, true)}</List.Section>
+      )}
+
+      {recentList.length > 0 && !searchText && (
+        <List.Section title="Recent">{renderProjects(recentList, false)}</List.Section>
       )}
 
       {parentWorkspaces.map((workspace) => {
         const workspaceProjects = projectsByWorkspace[workspace] || [];
 
-        if (workspaceProjects.length === 0) {
-          return null;
-        }
+        if (workspaceProjects.length === 0) return null;
+
+        const subtitle = `${workspace} • ${workspaceProjects.length} project${workspaceProjects.length === 1 ? "" : "s"}`;
 
         return (
-          <List.Section key={workspace} subtitle={workspace} title={path.basename(workspace)}>
-            {workspaceProjects.map((project: Project) => (
-              <ProjectItem
-                defaultApp={defaultApp}
-                isPinned={pinnedSet.has(project.fullPath)}
-                key={project.fullPath}
-                onRefresh={loadData}
-                onReorderPin={reorderPinnedProject}
-                onTogglePin={togglePinProject}
-                project={project}
-                showGitStatus={showGitStatus}
-                terminalApp={terminalApp}
-                workspaceApps={workspaceApps}
-                workspacePath={workspace}
-              />
-            ))}
+          <List.Section key={workspace} subtitle={subtitle} title={path.basename(workspace)}>
+            {renderProjects(workspaceProjects, false)}
           </List.Section>
         );
       })}

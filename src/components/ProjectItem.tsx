@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Color, Icon, List } from "@raycast/api";
+import { Action, ActionPanel, Color, Grid, Icon, List, open } from "@raycast/api";
 import path from "path";
 import { useMemo } from "react";
 
@@ -8,12 +8,14 @@ import { App, GitStatus, Project } from "@/types";
 interface ProjectItemProps {
   defaultApp: App | null;
   isPinned: boolean;
+  onOpen?: (fullPath: string) => void;
   onRefresh: () => Promise<void>;
   onReorderPin: (fullPath: string, direction: "down" | "up") => Promise<void>;
   onTogglePin: (fullPath: string) => Promise<void>;
   project: Project;
   showGitStatus: boolean;
   terminalApp: App | null;
+  viewMode: "grid" | "list";
   workspaceApps: Record<string, App>;
   workspacePath: string;
 }
@@ -21,12 +23,14 @@ interface ProjectItemProps {
 export default function ProjectItem({
   defaultApp,
   isPinned,
+  onOpen,
   onRefresh,
   onReorderPin,
   onTogglePin,
   project,
   showGitStatus,
   terminalApp,
+  viewMode = "list",
   workspaceApps,
   workspacePath,
 }: ProjectItemProps) {
@@ -35,82 +39,105 @@ export default function ProjectItem({
 
   const gitColor = useMemo(() => getGitColor(project.gitStatus), [project.gitStatus]);
 
-  return (
-    <List.Item
-      accessories={[
-        ...(project.gitStatus && showGitStatus
-          ? [
-              {
-                tag: {
-                  color: gitColor,
-                  value: formatGitBadge(project.gitStatus),
-                },
-                tooltip: `Branch: ${project.gitStatus.branch}\nPull: ${project.gitStatus.pull}\nPush: ${project.gitStatus.push}`,
-              },
-            ]
-          : []),
-      ]}
-      actions={
-        <ActionPanel>
-          <ActionPanel.Section title="Open">
-            <Action.Open
-              application={appToUse?.bundleId}
-              icon={Icon.AppWindow}
-              target={project.fullPath}
-              title={appToUse ? `Open in ${appToUse.name}` : "Open Project"}
-            />
-            <Action.Open
-              application={terminalApp?.bundleId}
-              icon={Icon.Terminal}
-              shortcut={{ key: "enter", modifiers: ["cmd", "shift"] }}
-              target={project.fullPath}
-              title="Open in Terminal"
+  const accessories = [
+    ...(project.gitStatus && showGitStatus
+      ? [
+          {
+            tag: {
+              color: gitColor,
+              value: formatGitBadge(project.gitStatus),
+            },
+            tooltip: `Branch: ${project.gitStatus.branch}\nDirty: ${project.gitStatus.dirty}\nPull: ${project.gitStatus.pull}\nPush: ${project.gitStatus.push}`,
+          },
+        ]
+      : []),
+  ];
+
+  const actions = (
+    <ActionPanel>
+      <ActionPanel.Section title="Open">
+        <Action
+          icon={Icon.AppWindow}
+          onAction={async () => {
+            onOpen?.(project.fullPath);
+            await open(project.fullPath, appToUse?.bundleId);
+          }}
+          title={appToUse ? `Open in ${appToUse.name}` : "Open Project"}
+        />
+        <Action
+          icon={Icon.Terminal}
+          onAction={async () => {
+            onOpen?.(project.fullPath);
+            await open(project.fullPath, terminalApp?.bundleId);
+          }}
+          shortcut={{ key: "enter", modifiers: ["cmd", "shift"] }}
+          title="Open in Terminal"
+        />
+        <Action
+          icon={isPinned ? Icon.PinDisabled : Icon.Pin}
+          onAction={() => onTogglePin(project.fullPath)}
+          shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
+          title={isPinned ? "Unpin Project" : "Pin Project"}
+        />
+        {isPinned && (
+          <>
+            <Action
+              icon={Icon.ArrowUp}
+              onAction={() => onReorderPin(project.fullPath, "up")}
+              shortcut={{ key: "arrowUp", modifiers: ["opt", "cmd"] }}
+              title="Move Pinned Project up"
             />
             <Action
-              icon={isPinned ? Icon.PinDisabled : Icon.Pin}
-              onAction={() => onTogglePin(project.fullPath)}
-              shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
-              title={isPinned ? "Unpin Project" : "Pin Project"}
+              icon={Icon.ArrowDown}
+              onAction={() => onReorderPin(project.fullPath, "down")}
+              shortcut={{ key: "arrowDown", modifiers: ["opt", "cmd"] }}
+              title="Move Pinned Project Down"
             />
-            {isPinned && (
-              <>
-                <Action
-                  icon={Icon.ArrowUp}
-                  onAction={() => onReorderPin(project.fullPath, "up")}
-                  shortcut={{ key: "arrowUp", modifiers: ["opt", "cmd"] }}
-                  title="Move Pinned Project up"
-                />
-                <Action
-                  icon={Icon.ArrowDown}
-                  onAction={() => onReorderPin(project.fullPath, "down")}
-                  shortcut={{ key: "arrowDown", modifiers: ["opt", "cmd"] }}
-                  title="Move Pinned Project Down"
-                />
-              </>
-            )}
-          </ActionPanel.Section>
-          <ActionPanel.Section title="File">
-            <Action.ShowInFinder path={project.fullPath} title="Show in Finder" />
-            <Action.OpenWith path={project.fullPath} title="Open with…" />
-          </ActionPanel.Section>
-          <ActionPanel.Section title="Copy">
-            <Action.CopyToClipboard content={project.name} title="Copy Project Name" />
-            <Action.CopyToClipboard
-              content={project.fullPath}
-              shortcut={{ key: "c", modifiers: ["cmd", "shift"] }}
-              title="Copy Project Path"
-            />
-          </ActionPanel.Section>
-          <ActionPanel.Section title="Settings">
-            <Action.Push
-              icon={Icon.Gear}
-              shortcut={{ key: ",", modifiers: ["cmd", "shift"] }}
-              target={<Settings onWorkspacesChanged={onRefresh} />}
-              title="Workspace Settings"
-            />
-          </ActionPanel.Section>
-        </ActionPanel>
-      }
+          </>
+        )}
+      </ActionPanel.Section>
+      <ActionPanel.Section title="File">
+        <Action.ShowInFinder
+          path={project.fullPath}
+          shortcut={{ key: "e", modifiers: ["cmd", "shift"] }}
+          title="Show in Finder"
+        />
+        <Action.OpenWith path={project.fullPath} title="Open with…" />
+      </ActionPanel.Section>
+      <ActionPanel.Section title="Copy">
+        <Action.CopyToClipboard content={project.name} title="Copy Project Name" />
+        <Action.CopyToClipboard
+          content={project.fullPath}
+          shortcut={{ key: "c", modifiers: ["cmd", "shift"] }}
+          title="Copy Project Path"
+        />
+      </ActionPanel.Section>
+      <ActionPanel.Section title="Settings">
+        <Action.Push
+          icon={Icon.Gear}
+          shortcut={{ key: ",", modifiers: ["cmd", "shift"] }}
+          target={<Settings onWorkspacesChanged={onRefresh} />}
+          title="Workspace Settings"
+        />
+      </ActionPanel.Section>
+    </ActionPanel>
+  );
+
+  if (viewMode === "grid") {
+    return (
+      <Grid.Item
+        actions={actions}
+        content={Icon.Folder}
+        subtitle={accessories.map((a) => a.tag.value).join("  ")}
+        title={project.name}
+      />
+    );
+  }
+
+  return (
+    <List.Item
+      accessories={accessories}
+      actions={actions}
       icon={Icon.Folder}
       subtitle={isPinned ? path.dirname(project.fullPath) : ""}
       title={project.name}
@@ -120,6 +147,10 @@ export default function ProjectItem({
 
 function formatGitBadge(gitStatus: GitStatus): string {
   const parts: string[] = [];
+
+  if (gitStatus.dirty) {
+    parts.push(`${gitStatus.dirty}?`);
+  }
 
   if (gitStatus.pull) {
     parts.push(`${gitStatus.pull}↓`);
@@ -137,6 +168,10 @@ function formatGitBadge(gitStatus: GitStatus): string {
 function getGitColor(gitStatus: GitStatus | null | undefined): Color | undefined {
   if (!gitStatus) {
     return undefined;
+  }
+
+  if (gitStatus.dirty) {
+    return Color.Red;
   }
 
   return gitStatus.pull || gitStatus.push ? Color.Orange : Color.Green;

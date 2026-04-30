@@ -13,25 +13,12 @@ import {
 } from "@raycast/api";
 import { type Application } from "@raycast/api";
 import { FormValidation, useForm } from "@raycast/utils";
-import { readFile, writeFile } from "fs/promises";
-import os from "os";
 import path from "path";
 
 import AddWorkspaceForm from "@/components/AddWorkspaceForm";
 import SelectEditor from "@/components/SelectEditor";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { App } from "@/types";
-
-interface ExportedSettings {
-  defaultApp: App | null;
-  onboardingCompleted: boolean;
-  pinnedProjects: string[];
-  showFzfStatus: boolean;
-  showGitStatus: boolean;
-  terminalApp: App | null;
-  workspaceApps: Record<string, App>;
-  workspaces: string[];
-}
+import { exportSettingsToDownloads, importSettingsFromFile } from "@/utils/storage";
 
 interface ImportSettingsFormProps {
   onImport: (filePath: string) => Promise<boolean>;
@@ -39,12 +26,6 @@ interface ImportSettingsFormProps {
 
 interface ImportSettingsFormValues {
   file: string[];
-}
-
-interface SettingsBackup {
-  exportedAt: string;
-  settings: ExportedSettings;
-  version: 1;
 }
 
 interface SettingsProps {
@@ -60,140 +41,83 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
     loadData,
     onboardingCompleted,
     pinnedProjects,
+    recentProjects,
+    recentProjectsCount,
     setOnboardingCompleted,
     showFzfStatus,
     showGitStatus,
+    showRecentProjects,
     terminalApp,
     updateDefaultApp,
     updatePinnedProjects,
+    updateRecentProjects,
+    updateRecentProjectsCount,
     updateShowFzfStatus,
     updateShowGitStatus,
+    updateShowRecentProjects,
     updateTerminalApp,
+    updateViewMode,
     updateWorkspaceApps,
     updateWorkspaces,
+    viewMode,
     workspaceApps,
     workspaces,
   } = useWorkspace();
 
-  function isApp(value: unknown): value is App {
-    return Boolean(
-      value &&
-      typeof value === "object" &&
-      "bundleId" in value &&
-      "name" in value &&
-      typeof (value as App).bundleId === "string" &&
-      typeof (value as App).name === "string",
-    );
-  }
-
-  function normalizeImportedSettings(payload: unknown): ExportedSettings {
-    const fallback: ExportedSettings = {
+  async function handleExportSettings() {
+    await exportSettingsToDownloads({
       defaultApp,
       onboardingCompleted,
       pinnedProjects,
+      recentProjects,
+      recentProjectsCount,
       showFzfStatus,
       showGitStatus,
+      showRecentProjects,
       terminalApp,
+      viewMode,
+      workspaceApps,
+      workspaces,
+    });
+  }
+
+  async function handleImportSettings(filePath: string): Promise<boolean> {
+    const fallback = {
+      defaultApp,
+      onboardingCompleted,
+      pinnedProjects,
+      recentProjects,
+      recentProjectsCount,
+      showFzfStatus,
+      showGitStatus,
+      showRecentProjects,
+      terminalApp,
+      viewMode,
       workspaceApps,
       workspaces,
     };
 
-    if (!payload || typeof payload !== "object") {
-      return fallback;
+    const importedSettings = await importSettingsFromFile(filePath, fallback);
+    if (!importedSettings) return false;
+
+    await updateDefaultApp(importedSettings.defaultApp);
+    await updateTerminalApp(importedSettings.terminalApp);
+    await updateWorkspaces(importedSettings.workspaces);
+    await updateWorkspaceApps(importedSettings.workspaceApps);
+    await updatePinnedProjects(importedSettings.pinnedProjects);
+    await updateShowGitStatus(importedSettings.showGitStatus);
+    await updateShowFzfStatus(importedSettings.showFzfStatus);
+    await updateShowRecentProjects(importedSettings.showRecentProjects);
+    await updateRecentProjects(importedSettings.recentProjects);
+    await updateRecentProjectsCount(importedSettings.recentProjectsCount);
+    await updateViewMode(importedSettings.viewMode);
+    await setOnboardingCompleted(importedSettings.onboardingCompleted);
+
+    if (onWorkspacesChanged) {
+      await onWorkspacesChanged();
     }
 
-    const parsedSettings =
-      "settings" in payload && payload.settings && typeof payload.settings === "object"
-        ? (payload.settings as Partial<ExportedSettings>)
-        : (payload as Partial<ExportedSettings>);
-
-    return {
-      defaultApp: isApp(parsedSettings.defaultApp) ? parsedSettings.defaultApp : null,
-      onboardingCompleted:
-        typeof parsedSettings.onboardingCompleted === "boolean"
-          ? parsedSettings.onboardingCompleted
-          : fallback.onboardingCompleted,
-      pinnedProjects: Array.isArray(parsedSettings.pinnedProjects)
-        ? parsedSettings.pinnedProjects.filter((value): value is string => typeof value === "string")
-        : fallback.pinnedProjects,
-      showFzfStatus:
-        typeof parsedSettings.showFzfStatus === "boolean" ? parsedSettings.showFzfStatus : fallback.showFzfStatus,
-      showGitStatus:
-        typeof parsedSettings.showGitStatus === "boolean" ? parsedSettings.showGitStatus : fallback.showGitStatus,
-      terminalApp: isApp(parsedSettings.terminalApp) ? parsedSettings.terminalApp : null,
-      workspaceApps:
-        parsedSettings.workspaceApps && typeof parsedSettings.workspaceApps === "object"
-          ? Object.fromEntries(
-              Object.entries(parsedSettings.workspaceApps).filter(
-                (entry): entry is [string, App] => typeof entry[0] === "string" && isApp(entry[1]),
-              ),
-            )
-          : fallback.workspaceApps,
-      workspaces: Array.isArray(parsedSettings.workspaces)
-        ? parsedSettings.workspaces.filter((value): value is string => typeof value === "string")
-        : fallback.workspaces,
-    };
-  }
-
-  async function exportSettingsToDownloads() {
-    try {
-      const backup: SettingsBackup = {
-        exportedAt: new Date().toISOString(),
-        settings: {
-          defaultApp,
-          onboardingCompleted,
-          pinnedProjects,
-          showFzfStatus,
-          showGitStatus,
-          terminalApp,
-          workspaceApps,
-          workspaces,
-        },
-        version: 1,
-      };
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const outputPath = path.join(os.homedir(), "Downloads", `workspace-raycast-settings-${timestamp}.json`);
-
-      await writeFile(outputPath, JSON.stringify(backup, null, 2), "utf-8");
-      await showToast({
-        message: outputPath,
-        style: Toast.Style.Success,
-        title: "Settings exported",
-      });
-    } catch {
-      await showToast({ style: Toast.Style.Failure, title: "Failed to export settings" });
-    }
-  }
-
-  async function importSettingsFromFile(filePath: string): Promise<boolean> {
-    try {
-      const fileContents = await readFile(filePath, "utf-8");
-      const parsed = JSON.parse(fileContents) as unknown;
-      const importedSettings = normalizeImportedSettings(parsed);
-
-      await updateDefaultApp(importedSettings.defaultApp);
-      await updateTerminalApp(importedSettings.terminalApp);
-      await updateWorkspaces(importedSettings.workspaces);
-      await updateWorkspaceApps(importedSettings.workspaceApps);
-      await updatePinnedProjects(importedSettings.pinnedProjects);
-      await updateShowGitStatus(importedSettings.showGitStatus);
-      await updateShowFzfStatus(importedSettings.showFzfStatus);
-      await setOnboardingCompleted(importedSettings.onboardingCompleted);
-
-      if (onWorkspacesChanged) {
-        await onWorkspacesChanged();
-      }
-
-      await showToast({
-        message: path.basename(filePath),
-        style: Toast.Style.Success,
-        title: "Settings imported",
-      });
-      return true;
-    } catch {
-      await showToast({ style: Toast.Style.Failure, title: "Failed to import settings file" });
-      return false;
-    }
+    return true;
   }
 
   async function removeWorkspace(workspacePath: string) {
@@ -366,17 +290,37 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
             title="Terminal App"
           />
           <List.Item
+            accessories={[
+              {
+                tag: {
+                  color: Color.SecondaryText,
+                  value: viewMode === "grid" ? "Grid" : "List",
+                },
+              },
+            ]}
+            actions={
+              <ActionPanel>
+                <ActionPanel.Section title="View Mode">
+                  <Action
+                    icon={viewMode === "grid" ? Icon.List : Icon.AppWindowGrid3x3}
+                    onAction={() => updateViewMode(viewMode === "grid" ? "list" : "grid")}
+                    title={viewMode === "grid" ? "Switch to List View" : "Switch to Grid View"}
+                  />
+                </ActionPanel.Section>
+              </ActionPanel>
+            }
+            icon={Icon.AppWindowGrid3x3}
+            subtitle="Default layout when opening the extension"
+            title="View Mode"
+          />
+          <List.Item
             actions={
               <ActionPanel>
                 <ActionPanel.Section title="Backup">
-                  <Action
-                    icon={Icon.Download}
-                    onAction={exportSettingsToDownloads}
-                    title="Export Settings to Downloads"
-                  />
+                  <Action icon={Icon.Download} onAction={handleExportSettings} title="Export Settings to Downloads" />
                   <Action.Push
                     icon={Icon.Upload}
-                    target={<ImportSettingsForm onImport={importSettingsFromFile} />}
+                    target={<ImportSettingsForm onImport={handleImportSettings} />}
                     title="Import Settings File"
                   />
                 </ActionPanel.Section>
@@ -390,7 +334,63 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       )}
 
       {showGeneral && (
-        <List.Section title="GIT Integration">
+        <List.Section title="Recent Projects">
+          <List.Item
+            accessories={[
+              {
+                tag: {
+                  color: showRecentProjects ? Color.Green : Color.SecondaryText,
+                  value: showRecentProjects ? "Enabled" : "Disabled",
+                },
+              },
+            ]}
+            actions={
+              <ActionPanel>
+                <ActionPanel.Section title="Recent Projects">
+                  <Action
+                    onAction={() => updateShowRecentProjects(!showRecentProjects)}
+                    title={showRecentProjects ? "Disable Recent Projects" : "Enable Recent Projects"}
+                  />
+                </ActionPanel.Section>
+              </ActionPanel>
+            }
+            icon={Icon.Clock}
+            subtitle="Show recently opened projects in the workspace list"
+            title="Show Recent Projects"
+          />
+          {showRecentProjects && (
+            <List.Item
+              accessories={[
+                {
+                  tag: {
+                    color: Color.SecondaryText,
+                    value: `${recentProjectsCount}`,
+                  },
+                },
+              ]}
+              actions={
+                <ActionPanel>
+                  <ActionPanel.Section title="Count">
+                    {[3, 5, 7, 10].map((count) => (
+                      <Action
+                        key={count}
+                        onAction={() => updateRecentProjectsCount(count)}
+                        title={`Show ${count} Recent Projects`}
+                      />
+                    ))}
+                  </ActionPanel.Section>
+                </ActionPanel>
+              }
+              icon={Icon.List}
+              subtitle="Number of recent projects to display"
+              title="Recent Projects Count"
+            />
+          )}
+        </List.Section>
+      )}
+
+      {showGeneral && (
+        <List.Section title="Integration - git">
           <List.Item
             accessories={[
               {
@@ -439,7 +439,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       )}
 
       {showGeneral && (
-        <List.Section title="FZF Integration">
+        <List.Section title="Integration - fzf ">
           <List.Item
             accessories={[
               {

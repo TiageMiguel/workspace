@@ -15,16 +15,18 @@ Workspace is a Raycast extension that gives you a central hub for all your proje
 
 ## Installation
 
-1. Clone this repository.
-2. Open Raycast → Extensions → Add Extension → select the cloned folder.
+To install and run this extension locally, please follow the [official Raycast guide for installing extensions from source](https://developers.raycast.com/basics/create-your-first-extension#build-the-extension).
 
-> **Note**: Currently available only via manual installation from source.
+Essentially, you just need to clone the repository, run `npm install`, and then `npm run dev` to register it within Raycast.
 
 ## Key Features
 
 - Blazing-fast fzf-style fuzzy search
 - Unified list of all projects from your configured workspace folders
 - Instant open in your default (or per-workspace) application
+- **Grid and List Views**: Toggle between Grid and List views seamlessly.
+- **Recent Projects**: Automatically tracks your most recently opened projects.
+- **Import/Export Settings**: Backup and restore all your workspaces, pins, and configurations to a single JSON file.
 - Git status: current branch + pending changes
 - Pin favorite projects
 - Add, remove, and reorder workspace folders
@@ -42,14 +44,15 @@ Workspace is a Raycast extension that gives you a central hub for all your proje
 ## Getting Started
 
 1. Run **Manage Workspaces** to add your project root folders.
-2. Configure your default application in **Workspace Settings**.
+2. Configure your default application and preferred view mode in **Workspace Settings**.
 3. Use the **Workspace** command to search and open projects instantly.
+4. Export your settings to keep a backup of your workspaces and pinned projects.
 
 ## Commands
 
 - **Workspace** – Search and open projects
 - **Manage Workspaces** – Add/remove/reorder workspace folders
-- **Workspace Settings** – Default app + per-workspace overrides
+- **Workspace Settings** – Apps, View Mode, and Backup/Restore settings
 
 ## Creator's Note
 
