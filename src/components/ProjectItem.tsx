@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Color, Grid, Icon, List, open } from "@raycast/api";
+import { Action, ActionPanel, Color, Grid, Icon, List, open, showToast, Toast } from "@raycast/api";
 import path from "path";
 import { useMemo } from "react";
 
@@ -37,21 +37,11 @@ export default function ProjectItem({
   const workspaceApp = workspaceApps[workspacePath];
   const appToUse = workspaceApp || defaultApp;
 
-  const gitColor = useMemo(() => getGitColor(project.gitStatus), [project.gitStatus]);
+  const accessories = useMemo(() => {
+    if (!project.gitStatus || !showGitStatus) return [];
 
-  const accessories = [
-    ...(project.gitStatus && showGitStatus
-      ? [
-          {
-            tag: {
-              color: gitColor,
-              value: formatGitBadge(project.gitStatus),
-            },
-            tooltip: `Branch: ${project.gitStatus.branch}\nDirty: ${project.gitStatus.dirty}\nPull: ${project.gitStatus.pull}\nPush: ${project.gitStatus.push}`,
-          },
-        ]
-      : []),
-  ];
+    return getGitAccessories(project.gitStatus);
+  }, [project.gitStatus, showGitStatus]);
 
   const actions = (
     <ActionPanel>
@@ -67,8 +57,16 @@ export default function ProjectItem({
         <Action
           icon={Icon.Terminal}
           onAction={async () => {
+            if (!terminalApp) {
+              await showToast({
+                message: "Configure it in Settings",
+                style: Toast.Style.Failure,
+                title: "No Terminal App Set",
+              });
+              return;
+            }
             onOpen?.(project.fullPath);
-            await open(project.fullPath, terminalApp?.bundleId);
+            await open(project.fullPath, terminalApp.bundleId);
           }}
           shortcut={{ key: "enter", modifiers: ["cmd", "shift"] }}
           title="Open in Terminal"
@@ -145,12 +143,17 @@ export default function ProjectItem({
   );
 }
 
-function formatGitBadge(gitStatus: GitStatus): string {
-  const parts: string[] = [];
+function getGitAccessories(gitStatus: GitStatus) {
+  const accessories: { tag: { color: Color; value: string }; tooltip: string }[] = [];
 
   if (gitStatus.dirty) {
-    parts.push(`${gitStatus.dirty}?`);
+    accessories.push({
+      tag: { color: Color.SecondaryText, value: `${gitStatus.dirty} ?` },
+      tooltip: `${gitStatus.dirty} uncommitted change${gitStatus.dirty > 1 ? "s" : ""}`,
+    });
   }
+
+  const parts: string[] = [];
 
   if (gitStatus.pull) {
     parts.push(`${gitStatus.pull}↓`);
@@ -162,17 +165,12 @@ function formatGitBadge(gitStatus: GitStatus): string {
 
   parts.push(gitStatus.branch);
 
-  return parts.join(" ");
-}
+  const branchColor = gitStatus.push || gitStatus.pull ? Color.Orange : Color.Green;
 
-function getGitColor(gitStatus: GitStatus | null | undefined): Color | undefined {
-  if (!gitStatus) {
-    return undefined;
-  }
+  accessories.push({
+    tag: { color: branchColor, value: parts.join(" ") },
+    tooltip: `Branch: ${gitStatus.branch}`,
+  });
 
-  if (gitStatus.dirty) {
-    return Color.Red;
-  }
-
-  return gitStatus.pull || gitStatus.push ? Color.Orange : Color.Green;
+  return accessories;
 }

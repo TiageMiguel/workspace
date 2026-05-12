@@ -1,12 +1,10 @@
-import { Action, ActionPanel, Icon, List, showToast, Toast, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Icon, List, useNavigation } from "@raycast/api";
 import { type Application, getApplications } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 
-import { saveStoredApp } from "@/utils/storage";
-
 interface SelectEditorProps {
   onReset?: () => void;
-  onSelect?: (app: Application) => Promise<void> | void;
+  onSelect: (app: Application) => Promise<void> | void;
 }
 
 export default function SelectEditor({ onReset, onSelect }: SelectEditorProps) {
@@ -14,16 +12,7 @@ export default function SelectEditor({ onReset, onSelect }: SelectEditorProps) {
   const { data: apps, isLoading } = usePromise(getApplications);
 
   const handleSelect = async (app: Application) => {
-    if (onSelect) {
-      await onSelect(app);
-      pop();
-
-      return;
-    }
-
-    await saveStoredApp({ bundleId: app.bundleId || "", name: app.name });
-    await showToast({ message: app.name, style: Toast.Style.Success, title: "App Updated" });
-
+    await onSelect(app);
     pop();
   };
 

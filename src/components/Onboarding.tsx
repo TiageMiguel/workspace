@@ -1,18 +1,11 @@
-import { Action, ActionPanel, type Application, Color, Form, Icon, List, useNavigation } from "@raycast/api";
-import { FormValidation, getProgressIcon, useForm } from "@raycast/utils";
+import { Action, ActionPanel, type Application, Color, Icon, List } from "@raycast/api";
+import { getProgressIcon } from "@raycast/utils";
 
 import AddWorkspaceForm from "@/components/AddWorkspaceForm";
+import ImportSettingsForm from "@/components/ImportSettingsForm";
 import SelectEditor from "@/components/SelectEditor";
 import Settings from "@/components/Settings";
 import { App } from "@/types";
-
-interface OnboardingImportSettingsFormProps {
-  onImport: (filePath: string) => Promise<boolean>;
-}
-
-interface OnboardingImportSettingsFormValues {
-  file: string[];
-}
 
 interface OnboardingProps {
   defaultApp: App | null;
@@ -87,7 +80,7 @@ export default function Onboarding({
             </ActionPanel>
           }
           icon={Icon.Info}
-          subtitle={`Next step: ${nextStep}. You can always change these later in settings.`}
+          subtitle={`Next step: ${nextStep}. You can always change these later in Settings.`}
           title="Setup Guide"
         />
         <List.Item
@@ -164,7 +157,7 @@ export default function Onboarding({
               </ActionPanel>
             }
             icon={{ source: Icon.CheckCircle, tintColor: Color.Green }}
-            subtitle="You're ready to go!"
+            subtitle="You're ready to go."
             title="3. Finish Setup"
           />
         )}
@@ -176,7 +169,7 @@ export default function Onboarding({
               <ActionPanel.Section title="Import">
                 <Action.Push
                   icon={Icon.Upload}
-                  target={<OnboardingImportSettingsForm onImport={onImportSettings} />}
+                  target={<ImportSettingsForm onImport={onImportSettings} />}
                   title="Import Settings File"
                 />
               </ActionPanel.Section>
@@ -196,41 +189,5 @@ export default function Onboarding({
         />
       </List.Section>
     </List>
-  );
-}
-
-function OnboardingImportSettingsForm({ onImport }: OnboardingImportSettingsFormProps) {
-  const { pop } = useNavigation();
-  const { handleSubmit, itemProps } = useForm<OnboardingImportSettingsFormValues>({
-    async onSubmit(values) {
-      const imported = await onImport(values.file[0]);
-      if (imported) {
-        pop();
-      }
-    },
-    validation: {
-      file: FormValidation.Required,
-    },
-  });
-
-  return (
-    <Form
-      actions={
-        <ActionPanel>
-          <ActionPanel.Section title="Import">
-            <Action.SubmitForm onSubmit={handleSubmit} title="Import Settings" />
-          </ActionPanel.Section>
-        </ActionPanel>
-      }
-      navigationTitle="Import Settings"
-    >
-      <Form.FilePicker
-        allowMultipleSelection={false}
-        canChooseDirectories={false}
-        canChooseFiles
-        title="Settings File"
-        {...itemProps.file}
-      />
-    </Form>
   );
 }

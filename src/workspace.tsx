@@ -12,6 +12,7 @@ import { importSettingsFromFile } from "@/utils/storage";
 
 export default function Command() {
   const {
+    applyImportedSettings,
     defaultApp,
     fzfAvailable,
     fzfPath,
@@ -21,6 +22,7 @@ export default function Command() {
     pinnedProjects,
     projects,
     recentProjects,
+    recentProjectsCount,
     recordProjectOpen,
     reorderPinnedProject,
     setOnboardingCompleted,
@@ -31,12 +33,6 @@ export default function Command() {
     togglePinProject,
     toggleViewMode,
     updateDefaultApp,
-    updatePinnedProjects,
-    updateShowFzfStatus,
-    updateShowGitStatus,
-    updateTerminalApp,
-    updateWorkspaceApps,
-    updateWorkspaces,
     viewMode,
     workspaceApps,
     workspaces: parentWorkspaces,
@@ -90,20 +86,21 @@ export default function Command() {
     return map;
   }, [parentWorkspaces, filteredProjects, pinnedSet, recentSet, searchText, showRecentProjects]);
 
-  const pinnedList = useMemo(() => {
-    const projectsMap = new Map((projects || []).map((p) => [p.fullPath, p]));
+  const projectsMap = useMemo(() => {
+    return new Map((projects || []).map((p) => [p.fullPath, p]));
+  }, [projects]);
 
+  const pinnedList = useMemo(() => {
     return pinnedProjects.map((path) => projectsMap.get(path)).filter((p): p is Project => !!p);
-  }, [projects, pinnedProjects]);
+  }, [projectsMap, pinnedProjects]);
 
   const recentList = useMemo(() => {
     if (!showRecentProjects) return [];
-    const projectsMap = new Map((projects || []).map((p) => [p.fullPath, p]));
 
     return recentProjects
       .map((r) => projectsMap.get(r.path))
       .filter((p): p is Project => !!p && !pinnedSet.has(p.fullPath));
-  }, [projects, recentProjects, showRecentProjects, pinnedSet]);
+  }, [projectsMap, recentProjects, showRecentProjects, pinnedSet]);
 
   const hasVisibleProjects = useMemo(() => {
     if (pinnedList.length > 0 && !searchText) {
@@ -136,19 +133,7 @@ export default function Command() {
     const importedSettings = await importSettingsFromFile(filePath, fallback);
     if (!importedSettings) return false;
 
-    await updateDefaultApp(importedSettings.defaultApp);
-    await updateTerminalApp(importedSettings.terminalApp);
-    await updateWorkspaces(importedSettings.workspaces);
-    await updateWorkspaceApps(importedSettings.workspaceApps);
-    await updatePinnedProjects(importedSettings.pinnedProjects);
-    await updateShowGitStatus(importedSettings.showGitStatus);
-    await updateShowFzfStatus(importedSettings.showFzfStatus);
-    await updateShowRecentProjects(importedSettings.showRecentProjects);
-    await updateRecentProjects(importedSettings.recentProjects);
-    await updateRecentProjectsCount(importedSettings.recentProjectsCount);
-    await updateViewMode(importedSettings.viewMode);
-    await setOnboardingCompleted(importedSettings.onboardingCompleted);
-
+    await applyImportedSettings(importedSettings);
     await loadData();
     return true;
   }
@@ -185,104 +170,38 @@ export default function Command() {
       />
     ));
 
-  if (viewMode === "grid") {
-    return (
-      <Grid
-        isLoading={isLoading}
-        onSearchTextChange={setSearchText}
-        searchBarAccessory={
-          <Grid.Dropdown
-            onChange={(val) => {
-              if (val !== viewMode) toggleViewMode();
-            }}
-            tooltip="View Mode"
-            value={viewMode}
-          >
-            <Grid.Dropdown.Item icon={Icon.List} title="List" value="list" />
-            <Grid.Dropdown.Item icon={Icon.AppWindowGrid3x3} title="Grid" value="grid" />
-          </Grid.Dropdown>
-        }
-        searchBarPlaceholder="Search for projects..."
-        throttle
-      >
-        {pinnedList.length > 0 && !searchText && (
-          <Grid.Section title="Pinned">{renderProjects(pinnedList, true)}</Grid.Section>
-        )}
-
-        {recentList.length > 0 && !searchText && (
-          <Grid.Section title="Recent">{renderProjects(recentList, false)}</Grid.Section>
-        )}
-
-        {parentWorkspaces.map((workspace) => {
-          const workspaceProjects = projectsByWorkspace[workspace] || [];
-
-          if (workspaceProjects.length === 0) return null;
-
-          const subtitle = `${workspace} • ${workspaceProjects.length} project${workspaceProjects.length === 1 ? "" : "s"}`;
-
-          return (
-            <Grid.Section key={workspace} subtitle={subtitle} title={path.basename(workspace)}>
-              {renderProjects(workspaceProjects, false)}
-            </Grid.Section>
-          );
-        })}
-
-        {parentWorkspaces.length === 0 && !isLoading && (
-          <Grid.EmptyView
-            actions={
-              <ActionPanel>
-                <ActionPanel.Section title="Get Started">
-                  <Action.Push target={<Settings onWorkspacesChanged={loadData} />} title="Open Settings" />
-                </ActionPanel.Section>
-              </ActionPanel>
-            }
-            description="Add a workspace in settings to see your projects."
-            title="No Workspaces"
-          />
-        )}
-        {parentWorkspaces.length > 0 && !isLoading && !searchText && !hasVisibleProjects && (
-          <Grid.EmptyView
-            actions={
-              <ActionPanel>
-                <ActionPanel.Section title="Manage">
-                  <Action.Push target={<Settings onWorkspacesChanged={loadData} />} title="Open Settings" />
-                </ActionPanel.Section>
-              </ActionPanel>
-            }
-            description="No folders found inside your workspaces. Add or manage workspaces in settings."
-            title="No Projects Found"
-          />
-        )}
-      </Grid>
-    );
-  }
+  // Aliased components to avoid massive JSX duplication
+  // The props we use are identical between Grid and List for our use case
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const View = (viewMode === "grid" ? Grid : List) as any;
+  const Section = (viewMode === "grid" ? Grid.Section : List.Section) as any;
+  const EmptyView = (viewMode === "grid" ? Grid.EmptyView : List.EmptyView) as any;
+  const Dropdown = (viewMode === "grid" ? Grid.Dropdown : List.Dropdown) as any;
+  const DropdownItem = (viewMode === "grid" ? Grid.Dropdown.Item : List.Dropdown.Item) as any;
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
-    <List
+    <View
       isLoading={isLoading}
       onSearchTextChange={setSearchText}
       searchBarAccessory={
-        <List.Dropdown
-          onChange={(val) => {
+        <Dropdown
+          onChange={(val: string) => {
             if (val !== viewMode) toggleViewMode();
           }}
           tooltip="View Mode"
           value={viewMode}
         >
-          <List.Dropdown.Item icon={Icon.List} title="List" value="list" />
-          <List.Dropdown.Item icon={Icon.AppWindowGrid3x3} title="Grid" value="grid" />
-        </List.Dropdown>
+          <DropdownItem icon={Icon.List} title="List" value="list" />
+          <DropdownItem icon={Icon.AppWindowGrid3x3} title="Grid" value="grid" />
+        </Dropdown>
       }
       searchBarPlaceholder="Search for projects..."
       throttle
     >
-      {pinnedList.length > 0 && !searchText && (
-        <List.Section title="Pinned">{renderProjects(pinnedList, true)}</List.Section>
-      )}
+      {pinnedList.length > 0 && !searchText && <Section title="Pinned">{renderProjects(pinnedList, true)}</Section>}
 
-      {recentList.length > 0 && !searchText && (
-        <List.Section title="Recent">{renderProjects(recentList, false)}</List.Section>
-      )}
+      {recentList.length > 0 && !searchText && <Section title="Recent">{renderProjects(recentList, false)}</Section>}
 
       {parentWorkspaces.map((workspace) => {
         const workspaceProjects = projectsByWorkspace[workspace] || [];
@@ -292,14 +211,14 @@ export default function Command() {
         const subtitle = `${workspace} • ${workspaceProjects.length} project${workspaceProjects.length === 1 ? "" : "s"}`;
 
         return (
-          <List.Section key={workspace} subtitle={subtitle} title={path.basename(workspace)}>
+          <Section key={workspace} subtitle={subtitle} title={path.basename(workspace)}>
             {renderProjects(workspaceProjects, false)}
-          </List.Section>
+          </Section>
         );
       })}
 
       {parentWorkspaces.length === 0 && !isLoading && (
-        <List.EmptyView
+        <EmptyView
           actions={
             <ActionPanel>
               <ActionPanel.Section title="Get Started">
@@ -307,12 +226,12 @@ export default function Command() {
               </ActionPanel.Section>
             </ActionPanel>
           }
-          description="Add a workspace in settings to see your projects."
+          description="Add a workspace in Settings to see your projects."
           title="No Workspaces"
         />
       )}
       {parentWorkspaces.length > 0 && !isLoading && !searchText && !hasVisibleProjects && (
-        <List.EmptyView
+        <EmptyView
           actions={
             <ActionPanel>
               <ActionPanel.Section title="Manage">
@@ -320,10 +239,10 @@ export default function Command() {
               </ActionPanel.Section>
             </ActionPanel>
           }
-          description="No folders found inside your workspaces. Add or manage workspaces in settings."
+          description="No folders found inside your workspaces. Add or manage workspaces in Settings."
           title="No Projects Found"
         />
       )}
-    </List>
+    </View>
   );
 }

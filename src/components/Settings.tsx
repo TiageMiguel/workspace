@@ -1,32 +1,12 @@
-import {
-  Action,
-  ActionPanel,
-  Alert,
-  Color,
-  confirmAlert,
-  Form,
-  Icon,
-  List,
-  showToast,
-  Toast,
-  useNavigation,
-} from "@raycast/api";
+import { Action, ActionPanel, Alert, Color, confirmAlert, Icon, List, showToast, Toast } from "@raycast/api";
 import { type Application } from "@raycast/api";
-import { FormValidation, useForm } from "@raycast/utils";
 import path from "path";
 
 import AddWorkspaceForm from "@/components/AddWorkspaceForm";
+import ImportSettingsForm from "@/components/ImportSettingsForm";
 import SelectEditor from "@/components/SelectEditor";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { exportSettingsToDownloads, importSettingsFromFile } from "@/utils/storage";
-
-interface ImportSettingsFormProps {
-  onImport: (filePath: string) => Promise<boolean>;
-}
-
-interface ImportSettingsFormValues {
-  file: string[];
-}
 
 interface SettingsProps {
   onWorkspacesChanged?: () => Promise<void>;
@@ -35,6 +15,7 @@ interface SettingsProps {
 
 export default function Settings({ onWorkspacesChanged, showGeneral = true }: SettingsProps) {
   const {
+    applyImportedSettings,
     defaultApp,
     fzfAvailable,
     gitAvailable,
@@ -43,14 +24,11 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
     pinnedProjects,
     recentProjects,
     recentProjectsCount,
-    setOnboardingCompleted,
     showFzfStatus,
     showGitStatus,
     showRecentProjects,
     terminalApp,
     updateDefaultApp,
-    updatePinnedProjects,
-    updateRecentProjects,
     updateRecentProjectsCount,
     updateShowFzfStatus,
     updateShowGitStatus,
@@ -100,18 +78,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
     const importedSettings = await importSettingsFromFile(filePath, fallback);
     if (!importedSettings) return false;
 
-    await updateDefaultApp(importedSettings.defaultApp);
-    await updateTerminalApp(importedSettings.terminalApp);
-    await updateWorkspaces(importedSettings.workspaces);
-    await updateWorkspaceApps(importedSettings.workspaceApps);
-    await updatePinnedProjects(importedSettings.pinnedProjects);
-    await updateShowGitStatus(importedSettings.showGitStatus);
-    await updateShowFzfStatus(importedSettings.showFzfStatus);
-    await updateShowRecentProjects(importedSettings.showRecentProjects);
-    await updateRecentProjects(importedSettings.recentProjects);
-    await updateRecentProjectsCount(importedSettings.recentProjectsCount);
-    await updateViewMode(importedSettings.viewMode);
-    await setOnboardingCompleted(importedSettings.onboardingCompleted);
+    await applyImportedSettings(importedSettings);
 
     if (onWorkspacesChanged) {
       await onWorkspacesChanged();
@@ -390,7 +357,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       )}
 
       {showGeneral && (
-        <List.Section title="Integration - git">
+        <List.Section title="Integration - Git">
           <List.Item
             accessories={[
               {
@@ -439,7 +406,7 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
       )}
 
       {showGeneral && (
-        <List.Section title="Integration - fzf ">
+        <List.Section title="Integration - FZF">
           <List.Item
             accessories={[
               {
@@ -578,41 +545,5 @@ export default function Settings({ onWorkspacesChanged, showGeneral = true }: Se
         />
       </List.Section>
     </List>
-  );
-}
-
-function ImportSettingsForm({ onImport }: ImportSettingsFormProps) {
-  const { pop } = useNavigation();
-  const { handleSubmit, itemProps } = useForm<ImportSettingsFormValues>({
-    async onSubmit(values) {
-      const imported = await onImport(values.file[0]);
-      if (imported) {
-        pop();
-      }
-    },
-    validation: {
-      file: FormValidation.Required,
-    },
-  });
-
-  return (
-    <Form
-      actions={
-        <ActionPanel>
-          <ActionPanel.Section title="Import">
-            <Action.SubmitForm onSubmit={handleSubmit} title="Import Settings" />
-          </ActionPanel.Section>
-        </ActionPanel>
-      }
-      navigationTitle="Import Settings"
-    >
-      <Form.FilePicker
-        allowMultipleSelection={false}
-        canChooseDirectories={false}
-        canChooseFiles
-        title="Settings File"
-        {...itemProps.file}
-      />
-    </Form>
   );
 }

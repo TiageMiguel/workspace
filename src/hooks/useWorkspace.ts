@@ -2,9 +2,9 @@ import { showToast, Toast } from "@raycast/api";
 import { useCachedPromise, useCachedState } from "@raycast/utils";
 import { readdir } from "fs/promises";
 import path from "path";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
-import { App, Project, RecentProject } from "@/types";
+import { App, ExportedSettings, Project, RecentProject } from "@/types";
 import {
   DEFAULT_RECENT_PROJECTS_COUNT,
   STORAGE_KEY_APP,
@@ -22,20 +22,9 @@ import {
 } from "@/utils/constants";
 import { getFzfPath, isFzfAvailable } from "@/utils/fzf";
 import { getGitStatus, isGitAvailable } from "@/utils/git";
-import {
-  saveStoredApp,
-  saveStoredPinnedProjects,
-  saveStoredRecentProjects,
-  saveStoredRecentProjectsCount,
-  saveStoredShowFzfStatus,
-  saveStoredShowGitStatus,
-  saveStoredShowRecentProjects,
-  saveStoredTerminalApp,
-  saveStoredWorkspaces,
-  saveWorkspaceApps,
-  setStoredOnboardingCompleted,
-} from "@/utils/storage";
+
 export interface UseWorkspaceReturn {
+  applyImportedSettings: (settings: ExportedSettings) => Promise<void>;
   defaultApp: App | null;
   fzfAvailable: boolean | null;
   fzfPath: null | string;
@@ -110,17 +99,21 @@ export function useWorkspace(): UseWorkspaceReturn {
   } = useCachedPromise(
     async (ws: string[], showGit: boolean) => {
       const allProjects = (await Promise.all(ws.map(getSubdirectories))).flat();
-      const projectsWithStatus = await Promise.all(
-        allProjects.map(async (project) => {
-          if (!showGit) {
-            return { ...project, gitStatus: null };
-          }
-
-          const status = await getGitStatus(project.fullPath);
-
-          return { ...project, gitStatus: status };
-        }),
-      );
+      const projectsWithStatus = [];
+      const CHUNK_SIZE = 10;
+      for (let i = 0; i < allProjects.length; i += CHUNK_SIZE) {
+        const chunk = allProjects.slice(i, i + CHUNK_SIZE);
+        const chunkResults = await Promise.all(
+          chunk.map(async (project) => {
+            if (!showGit) {
+              return { ...project, gitStatus: null };
+            }
+            const status = await getGitStatus(project.fullPath);
+            return { ...project, gitStatus: status };
+          }),
+        );
+        projectsWithStatus.push(...chunkResults);
+      }
 
       return projectsWithStatus;
     },
@@ -135,8 +128,6 @@ export function useWorkspace(): UseWorkspaceReturn {
   }, [revalidate]);
 
   const setOnboardingCompletedState = async (completed: boolean): Promise<void> => {
-    await setStoredOnboardingCompleted(completed);
-
     setOnboardingCompleted(completed);
   };
 
@@ -150,12 +141,10 @@ export function useWorkspace(): UseWorkspaceReturn {
       // Remove from recent projects if it was pinned
       const newRecent = recentProjects.filter((r) => r.path !== projectPath);
       if (newRecent.length !== recentProjects.length) {
-        await saveStoredRecentProjects(newRecent);
         setRecentProjects(newRecent);
       }
     }
 
-    await saveStoredPinnedProjects(newPinned);
     setPinnedProjects(newPinned);
   };
 
@@ -172,12 +161,11 @@ export function useWorkspace(): UseWorkspaceReturn {
       return;
     }
 
-    await saveStoredPinnedProjects(newPinned);
     setPinnedProjects(newPinned);
   };
 
   const toggleViewMode = async (): Promise<void> => {
-    setViewMode((prev) => (prev === "grid" ? "list" : "grid"));
+    setViewMode(viewMode === "grid" ? "list" : "grid");
   };
 
   const updateViewMode = async (mode: "grid" | "list"): Promise<void> => {
@@ -185,62 +173,42 @@ export function useWorkspace(): UseWorkspaceReturn {
   };
 
   const updateWorkspaces = async (newWorkspaces: string[]): Promise<void> => {
-    await saveStoredWorkspaces(newWorkspaces);
-
     setWorkspaces(newWorkspaces);
   };
 
   const updateDefaultApp = async (app: App | null): Promise<void> => {
-    await saveStoredApp(app);
-
     setDefaultApp(app);
   };
 
   const updatePinnedProjects = async (projects: string[]): Promise<void> => {
-    await saveStoredPinnedProjects(projects);
-
     setPinnedProjects(projects);
   };
 
   const updateShowFzfStatus = async (show: boolean): Promise<void> => {
-    await saveStoredShowFzfStatus(show);
-
     setShowFzfStatus(show);
   };
 
   const updateShowGitStatus = async (show: boolean): Promise<void> => {
-    await saveStoredShowGitStatus(show);
-
     setShowGitStatus(show);
   };
 
   const updateTerminalApp = async (app: App | null): Promise<void> => {
-    await saveStoredTerminalApp(app);
-
     setTerminalApp(app);
   };
 
   const updateWorkspaceApps = async (newWorkspaceApps: Record<string, App>): Promise<void> => {
-    await saveWorkspaceApps(newWorkspaceApps);
-
     setWorkspaceApps(newWorkspaceApps);
   };
 
   const updateShowRecentProjects = async (show: boolean): Promise<void> => {
-    await saveStoredShowRecentProjects(show);
-
     setShowRecentProjects(show);
   };
 
   const updateRecentProjects = async (newRecent: RecentProject[]): Promise<void> => {
-    await saveStoredRecentProjects(newRecent);
-
     setRecentProjects(newRecent);
   };
 
   const updateRecentProjectsCount = async (count: number): Promise<void> => {
-    await saveStoredRecentProjectsCount(count);
-
     setRecentProjectsCount(count);
   };
 
@@ -253,23 +221,37 @@ export function useWorkspace(): UseWorkspaceReturn {
     const filtered = recentProjects.filter((r) => r.path !== projectPath);
     const updated = [{ lastOpened: now, path: projectPath }, ...filtered].slice(0, recentProjectsCount);
 
-    await saveStoredRecentProjects(updated);
     setRecentProjects(updated);
   };
 
-  // Stale pin cleanup: prune pins that no longer exist in the project list
-  const projectPaths = projects ? new Set(projects.map((p) => p.fullPath)) : null;
-  if (projectPaths) {
+  const applyImportedSettings = async (settings: ExportedSettings): Promise<void> => {
+    await updateDefaultApp(settings.defaultApp);
+    await updateTerminalApp(settings.terminalApp);
+    await updateWorkspaces(settings.workspaces);
+    await updateWorkspaceApps(settings.workspaceApps);
+    await updatePinnedProjects(settings.pinnedProjects);
+    await updateShowGitStatus(settings.showGitStatus);
+    await updateShowFzfStatus(settings.showFzfStatus);
+    await updateShowRecentProjects(settings.showRecentProjects);
+    await updateRecentProjects(settings.recentProjects);
+    await updateRecentProjectsCount(settings.recentProjectsCount);
+    await updateViewMode(settings.viewMode);
+    await setOnboardingCompletedState(settings.onboardingCompleted);
+  };
+
+  // Stale pin/recent cleanup: prune entries that no longer exist in the project list
+  useEffect(() => {
+    if (!projects || projects.length === 0) return;
+
+    const projectPaths = new Set(projects.map((p) => p.fullPath));
+
     if (pinnedProjects.length > 0) {
       const stalePins = pinnedProjects.filter((p) => !projectPaths.has(p));
       if (stalePins.length > 0) {
-        const cleanedPins = pinnedProjects.filter((p) => projectPaths.has(p));
-        void saveStoredPinnedProjects(cleanedPins).then(() => {
-          setPinnedProjects(cleanedPins);
-          showToast({
-            style: Toast.Style.Success,
-            title: `Removed ${stalePins.length} stale pinned project(s)`,
-          });
+        setPinnedProjects(pinnedProjects.filter((p) => projectPaths.has(p)));
+        void showToast({
+          style: Toast.Style.Success,
+          title: `Removed ${stalePins.length} stale pinned project(s)`,
         });
       }
     }
@@ -277,13 +259,13 @@ export function useWorkspace(): UseWorkspaceReturn {
     if (recentProjects.length > 0) {
       const staleRecents = recentProjects.filter((p) => !projectPaths.has(p.path));
       if (staleRecents.length > 0) {
-        const cleanedRecents = recentProjects.filter((p) => projectPaths.has(p.path));
-        void saveStoredRecentProjects(cleanedRecents).then(() => setRecentProjects(cleanedRecents));
+        setRecentProjects(recentProjects.filter((p) => projectPaths.has(p.path)));
       }
     }
-  }
+  }, [projects]);
 
   return {
+    applyImportedSettings,
     defaultApp,
     fzfAvailable: fzfInfo?.available ?? null,
     fzfPath: fzfInfo?.path ?? null,

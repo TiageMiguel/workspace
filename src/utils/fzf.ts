@@ -68,14 +68,19 @@ export async function getFzfPath(): Promise<null | string> {
       return path;
     }
   } catch {
+    fzfPathCache = null;
+
     return null;
   }
 
   try {
     await execAsync("fzf --version", { timeout: FZF_TIMEOUT_MS });
+    fzfPathCache = "fzf";
 
     return "fzf";
   } catch {
+    fzfPathCache = null;
+
     return null;
   }
 }

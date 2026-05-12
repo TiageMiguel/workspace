@@ -67,7 +67,7 @@ export default function AddWorkspaceForm({ onDone }: AddWorkspaceFormProps) {
     >
       <Form.Description
         text="Select a parent folder (workspace) that contains your projects. You can manage your workspaces later in the extension settings."
-        title="How it works"
+        title="How It Works"
       />
       <Form.FilePicker
         allowMultipleSelection={false}
