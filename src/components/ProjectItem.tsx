@@ -2,8 +2,11 @@ import { Action, ActionPanel, Color, Grid, Icon, List, open, showToast, Toast } 
 import path from "path";
 import { useMemo } from "react";
 
+import CheckoutBranch from "@/components/Git/CheckoutBranch";
+import CommitLog from "@/components/Git/CommitLog";
 import Settings from "@/components/Settings";
 import { App, GitStatus, Project } from "@/types";
+import { pullGitBranch } from "@/utils/git";
 
 interface ProjectItemProps {
   defaultApp: App | null;
@@ -94,6 +97,40 @@ export default function ProjectItem({
           </>
         )}
       </ActionPanel.Section>
+      {project.gitStatus && (
+        <ActionPanel.Section title="Git">
+          <Action.Push
+            icon={Icon.Shuffle}
+            shortcut={{ key: "b", modifiers: ["cmd", "shift"] }}
+            target={<CheckoutBranch onBranchChanged={onRefresh} project={project} />}
+            title="Checkout Branch"
+          />
+          <Action
+            icon={Icon.Download}
+            onAction={async () => {
+              const toast = await showToast({ style: Toast.Style.Animated, title: "Pulling changes..." });
+              const success = await pullGitBranch(project.fullPath);
+              if (success) {
+                toast.style = Toast.Style.Success;
+                toast.title = "Pulled successfully";
+                await onRefresh();
+              } else {
+                toast.style = Toast.Style.Failure;
+                toast.title = "Failed to pull changes";
+                toast.message = "Check for uncommitted changes or conflicts.";
+              }
+            }}
+            shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
+            title="Pull Changes"
+          />
+          <Action.Push
+            icon={Icon.Terminal}
+            shortcut={{ key: "l", modifiers: ["cmd", "shift"] }}
+            target={<CommitLog project={project} />}
+            title="View Commit Log"
+          />
+        </ActionPanel.Section>
+      )}
       <ActionPanel.Section title="File">
         <Action.ShowInFinder
           path={project.fullPath}

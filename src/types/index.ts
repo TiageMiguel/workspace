@@ -18,6 +18,13 @@ export interface ExportedSettings {
   workspaces: string[];
 }
 
+export interface GitCommit {
+  author: string;
+  hash: string;
+  message: string;
+  relativeTime: string;
+}
+
 export interface GitStatus {
   branch: string;
   dirty: number;
